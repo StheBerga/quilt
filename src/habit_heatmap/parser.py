@@ -117,7 +117,7 @@ def load_events_from_rows(
     date_format: str | None = None,
     tz: str | None = None,
 ) -> dict[date, float]:
-    """Aggregate an iterable of dict-like rows into per-day totals.
+    """Aggregate an iterable of dict-like rows into a date -> value mapping.
 
     Same aggregation rules as :func:`load_events`, for callers who already
     have parsed rows (e.g. a database query result) instead of a CSV file.

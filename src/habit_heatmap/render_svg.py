@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from xml.sax.saxutils import escape
 
-from .colors import THEMES, bucket_color
+from .colors import THEMES, color_for_steps, resolve_steps
 
 CELL_SIZE = 11
 CELL_GAP = 3
@@ -24,7 +24,7 @@ MONTH_NAMES = (
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 )
-FONT = "font-family=\"sans-serif\" font-size=\"9\" fill=\"#767676\""
+FONT = 'font-family="sans-serif" font-size="9" fill="#767676"'
 TITLE_FONT = 'font-family="sans-serif" font-size="14" font-weight="600" fill="#24292f"'
 
 
@@ -97,6 +97,7 @@ def render_svg(
     legend: bool = True,
     label: str | None = None,
     week_start: str = "sunday",
+    steps: float | tuple[float, ...] | list[float] | None = None,
 ) -> str:
     """Render ``counts`` as a self-contained SVG contribution heatmap.
 
@@ -106,6 +107,20 @@ def render_svg(
     "Less ... More" color-scale strip below the grid, or ``label`` to
     render a title above the chart. ``week_start`` is ``"sunday"``
     (GitHub-style) or ``"monday"`` (ISO week convention).
+
+    ``steps`` controls the intensity scale while keeping the five-color
+    palette unchanged:
+
+    * ``None`` (default): four equal steps spanning the observed maximum,
+      preserving the original automatic scaling.
+    * A positive number: use that width for each of the four steps.
+    * A sequence of four positive numbers: use those as successive step
+      widths; their cumulative sums define the scale limits.
+
+    Zero/negative values always use the lightest color. The first three
+    cumulative limits separate the four positive-activity colors; values
+    at or above the third limit use the darkest color. Values above the
+    fourth cumulative limit remain darkest.
     """
     if not counts and (start is None or end is None):
         raise ValueError("counts is empty; pass explicit start and end dates")
@@ -122,6 +137,8 @@ def render_svg(
     palette = THEMES[theme]
     in_range_values = [value for day, value in counts.items() if start <= day <= end]
     max_value = max(in_range_values) if in_range_values else 0.0
+    cumulative_steps = resolve_steps(max_value, steps)
+    empty_automatic_scale = steps is None and max_value <= 0
     start_weekday = WEEK_START_WEEKDAYS[week_start]
 
     grid_start = _week_start(start, start_weekday)
@@ -143,7 +160,11 @@ def render_svg(
             x = grid_x0 + week_index * stride
             y = grid_y0 + weekday * stride
             value = counts.get(day, 0.0)
-            color = bucket_color(value, max_value, palette)
+            color = (
+                palette[0]
+                if empty_automatic_scale
+                else color_for_steps(value, cumulative_steps, palette)
+            )
             cells.append(
                 f'<rect x="{x}" y="{y}" width="{cell_size}" height="{cell_size}" '
                 f'rx="2" ry="2" fill="{color}"><title>{day.isoformat()}: {value:g}</title></rect>'

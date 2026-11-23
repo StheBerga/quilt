@@ -23,6 +23,24 @@ def iso_date(raw: str) -> date:
     return datetime.strptime(raw, "%Y-%m-%d").date()
 
 
+def parse_steps(raw: str) -> float | tuple[float, ...]:
+    """Parse one step width or four comma-separated step widths."""
+    try:
+        if "," not in raw:
+            return float(raw)
+        values = tuple(float(value.strip()) for value in raw.split(","))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "steps must be a number or four comma-separated numbers"
+        ) from exc
+
+    if len(values) != 4:
+        raise argparse.ArgumentTypeError(
+            "steps must be a number or four comma-separated numbers"
+        )
+    return values
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="habit-heatmap",
@@ -56,6 +74,15 @@ def build_parser() -> argparse.ArgumentParser:
         default="github",
         choices=sorted(THEMES),
         help="color theme (default: github)",
+    )
+    parser.add_argument(
+        "--steps",
+        type=parse_steps,
+        default=None,
+        help=(
+            "intensity step widths: one positive number (repeated four times), "
+            "or four comma-separated positive widths"
+        ),
     )
     parser.add_argument("--label", default=None, help="title rendered above the chart")
     parser.add_argument(
@@ -92,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
             theme=args.theme,
             label=args.label,
             week_start=args.week_start,
+            steps=args.steps,
         )
 
         if args.output == "-":

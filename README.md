@@ -42,6 +42,8 @@ heatmap without pulling in a charting library.
 - **Five built-in themes.** `github`, `blue`, `purple`, `mono` for print, and `dark`
   for embedding on a dark page. A theme is a five-color tuple, so adding your own is
   one line.
+- **Customizable intensity steps.** Keep the automatic scale or define fixed,
+  reproducible step widths for comparing heatmaps over time.
 - **A real Python library, not just a CLI.** `load_events` and `render_svg` are the
   public API; the command line is a thin wrapper. Feed it a CSV, stdin, or an
   iterable of rows straight from a database query.
@@ -80,6 +82,43 @@ from habit_heatmap import load_events, render_svg
 counts = load_events("events.csv", value_col="minutes")
 svg = render_svg(counts, theme="blue", label="Workouts")
 ```
+
+### Custom intensity steps
+
+By default, Quilt divides the largest value in the rendered date range into four
+equal-width steps. The five-color palette is unchanged: the lightest color represents
+zero/no activity, and the remaining four colors represent increasing activity.
+
+Use `steps` to make the scale independent of the observed maximum:
+
+```python
+# Use a fixed width of 10 for each step.
+svg = render_svg(counts, steps=10)
+
+# Use four successive, unequal step widths.
+svg = render_svg(counts, steps=[5, 15, 30, 60])
+```
+
+A scalar is repeated four times. A four-element sequence gives the widths of the
+four successive intervals; Quilt calculates their cumulative limits. For example,
+`steps=[5, 15, 30, 60]` produces cumulative limits `[5, 20, 50, 110]`. The first
+three limits separate the four positive-activity colors; the fourth is the nominal
+upper end of the darkest interval. Values at or above the third limit use the
+darkest color, including values above the fourth limit. Zero and negative values
+always use the lightest color.
+
+The same options are available from the command line:
+
+```
+# Four equal-width steps of 10 units each
+habit-heatmap workouts.csv -o heatmap.svg --value-col minutes --steps 10
+
+# Four custom step widths
+habit-heatmap workouts.csv -o heatmap.svg --value-col minutes --steps 5,15,30,60
+```
+
+`--steps` must be either one positive number or exactly four comma-separated
+positive numbers. Omit it to retain automatic scaling.
 
 Pipe data in or out. A `-` means stdin for the CSV argument and stdout for `-o`:
 
@@ -122,6 +161,7 @@ Then pass `theme="sunset"` to `render_svg` or `--theme sunset` on the CLI.
 | `--tz ZONE` | IANA zone (e.g. `America/Chicago`) to rebucket timestamps into |
 | `--start` / `--end` | Clip the rendered window to `YYYY-MM-DD` bounds |
 | `--theme NAME` | One of the five built-in palettes |
+| `--steps VALUE` | One positive step width or four comma-separated positive widths |
 | `--label TEXT` | Title rendered above the grid |
 | `--week-start {sunday,monday}` | First weekday of each column (default: `sunday`) |
 | `--verbose` | Print the `wrote <path>` confirmation (silent by default) |

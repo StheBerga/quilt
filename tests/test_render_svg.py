@@ -132,3 +132,60 @@ def test_render_svg_color_scale_ignores_values_outside_the_range():
     counts = {date(2024, 1, 1): 1, date(2024, 6, 1): 100}
     svg = render_svg(counts, start=date(2024, 1, 1), end=date(2024, 1, 7), legend=False)
     assert 'fill="#216e39"' in svg  # darkest github green, for Jan 1 within the window
+
+
+def _rect_fill(svg: str, day: str) -> str:
+    match = re.search(rf'<rect[^>]*fill="(#[0-9a-f]+)"><title>{day}:', svg)
+    assert match, f"no rect found for {day}"
+    return match.group(1)
+
+
+def test_render_svg_accepts_a_fixed_numeric_step_width():
+    counts = {
+        date(2024, 1, 1): 9,
+        date(2024, 1, 2): 10,
+        date(2024, 1, 3): 20,
+        date(2024, 1, 4): 30,
+    }
+    svg = render_svg(counts, steps=10, legend=False)
+    assert _rect_fill(svg, "2024-01-01") == "#9be9a8"
+    assert _rect_fill(svg, "2024-01-02") == "#40c463"
+    assert _rect_fill(svg, "2024-01-03") == "#30a14e"
+    assert _rect_fill(svg, "2024-01-04") == "#216e39"
+
+
+def test_render_svg_accepts_four_custom_step_widths():
+    counts = {
+        date(2024, 1, 1): 4,
+        date(2024, 1, 2): 5,
+        date(2024, 1, 3): 19,
+        date(2024, 1, 4): 20,
+        date(2024, 1, 5): 50,
+    }
+    svg = render_svg(counts, steps=[5, 15, 30, 60], legend=False)
+    assert _rect_fill(svg, "2024-01-01") == "#9be9a8"
+    assert _rect_fill(svg, "2024-01-02") == "#40c463"
+    assert _rect_fill(svg, "2024-01-03") == "#40c463"
+    assert _rect_fill(svg, "2024-01-04") == "#30a14e"
+    assert _rect_fill(svg, "2024-01-05") == "#216e39"
+
+
+def test_render_svg_default_scaling_retains_existing_boundaries():
+    counts = {
+        date(2024, 1, 1): 1,
+        date(2024, 1, 2): 25,
+        date(2024, 1, 3): 50,
+        date(2024, 1, 4): 75,
+        date(2024, 1, 5): 100,
+    }
+    svg = render_svg(counts, legend=False)
+    assert _rect_fill(svg, "2024-01-01") == "#9be9a8"
+    assert _rect_fill(svg, "2024-01-02") == "#40c463"
+    assert _rect_fill(svg, "2024-01-03") == "#30a14e"
+    assert _rect_fill(svg, "2024-01-04") == "#216e39"
+    assert _rect_fill(svg, "2024-01-05") == "#216e39"
+
+
+def test_render_svg_rejects_invalid_steps():
+    with pytest.raises(ValueError, match="exactly four"):
+        render_svg({date(2024, 1, 1): 1}, steps=[1, 2, 3], legend=False)
