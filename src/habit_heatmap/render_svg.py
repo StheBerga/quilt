@@ -144,6 +144,13 @@ def render_svg(
     render a title above the chart. ``week_start`` is ``"sunday"``
     (GitHub-style) or ``"monday"`` (ISO week convention).
 
+    Month and weekday labels can be styled independently with
+    ``month_label_font_size``, ``month_label_color``,
+    ``weekday_label_font_size``, and ``weekday_label_color``.
+    Font sizes are positive SVG units; colors must be 3- or 6-digit
+    hexadecimal strings. Both label groups default to 9 units and
+    ``#767676``.
+
     ``steps`` controls the intensity scale while keeping the five-color
     palette unchanged:
 
