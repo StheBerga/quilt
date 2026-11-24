@@ -206,12 +206,12 @@ def render_svg(
     automatic_label_color = _default_label_color(theme)
     month_label_style = _label_style(
         month_label_font_size,
-        month_label_color or automatic_label_color,
+        automatic_label_color if month_label_color is None else month_label_color,
         "month label",
     )
     weekday_label_style = _label_style(
         weekday_label_font_size,
-        weekday_label_color or automatic_label_color,
+        automatic_label_color if weekday_label_color is None else weekday_label_color,
         "weekday label",
     )
 
