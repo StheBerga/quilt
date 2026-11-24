@@ -151,10 +151,19 @@ THEMES["sunset"] = ("#fff5eb", "#fdbe85", "#fd8d3c", "#e6550d", "#a63603")
 
 Then pass `theme="sunset"` to `render_svg` or `--theme sunset` on the CLI.
 
-### Label appearance
+### Text appearance
 
-Month and weekday labels have independent font sizes and optional colors. If a color is not supplied, Quilt derives it from the selected theme's background: light backgrounds use `#767676`, while dark backgrounds use `#FFFFFF`. Set `month_label_color` / `weekday_label_color` in `render_svg`, or pass `--month-label-color` / `--weekday-label-color` on the CLI, to override either color independently. Font sizes default to `9` SVG units.
+Month labels, weekday labels, the title, and legend text have independent font sizes
+and optional colors. If a color is not supplied, Quilt derives it from the selected
+theme's background: light backgrounds use `#767676`, while dark backgrounds use
+`#FFFFFF`. Explicit colors override this default independently for each text group.
 
+The Python API uses `month_label_font_size` / `month_label_color`,
+`weekday_label_font_size` / `weekday_label_color`, `title_font_size` /
+`title_color`, and `legend_font_size` / `legend_color`. Month, weekday, and
+legend text default to `9` SVG units; the title defaults to `14`. The corresponding
+CLI options use the same names with hyphens, e.g. `--title-color` and
+`--legend-font-size`.
 ### CLI flags
 
 | Flag | Purpose |
@@ -171,6 +180,10 @@ Month and weekday labels have independent font sizes and optional colors. If a c
 | `--month-label-color COLOR` | Month-label hex color (default: automatic from theme) |
 | `--weekday-label-font-size SIZE` | Weekday-label font size in SVG units (default: `9`) |
 | `--weekday-label-color COLOR` | Weekday-label hex color (default: automatic from theme) |
+| `--title-font-size SIZE` | Title font size in SVG units (default: `14`) |
+| `--title-color COLOR` | Title hex color (default: automatic from theme) |
+| `--legend-font-size SIZE` | Legend-text font size in SVG units (default: `9`) |
+| `--legend-color COLOR` | Legend-text hex color (default: automatic from theme) |
 | `--week-start {sunday,monday}` | First weekday of each column (default: `sunday`) |
 | `--verbose` | Print the `wrote <path>` confirmation (silent by default) |
 | `--version` | Print the installed version and exit |
