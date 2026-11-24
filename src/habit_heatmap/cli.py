@@ -86,6 +86,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--label", default=None, help="title rendered above the chart")
     parser.add_argument(
+        "--month-label-font-size",
+        type=float,
+        default=9,
+        help="font size for month labels in SVG units (default: 9)",
+    )
+    parser.add_argument(
+        "--month-label-color",
+        default="#767676",
+        help="hex color for month labels (default: #767676)",
+    )
+    parser.add_argument(
+        "--weekday-label-font-size",
+        type=float,
+        default=9,
+        help="font size for weekday labels in SVG units (default: 9)",
+    )
+    parser.add_argument(
+        "--weekday-label-color",
+        default="#767676",
+        help="hex color for weekday labels (default: #767676)",
+    )
+    parser.add_argument(
         "--week-start",
         default="sunday",
         choices=("sunday", "monday"),
@@ -120,6 +142,10 @@ def main(argv: list[str] | None = None) -> int:
             label=args.label,
             week_start=args.week_start,
             steps=args.steps,
+            month_label_font_size=args.month_label_font_size,
+            month_label_color=args.month_label_color,
+            weekday_label_font_size=args.weekday_label_font_size,
+            weekday_label_color=args.weekday_label_color,
         )
 
         if args.output == "-":
