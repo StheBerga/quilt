@@ -46,8 +46,18 @@ def _label_style(font_size: int | float, color: str, label_type: str) -> str:
         or font_size <= 0
     ):
         raise ValueError(f"{label_type} font size must be a positive finite number")
-    if not isinstance(color, str) or re.fullmatch(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?", color) is None:
-        raise ValueError(f"{label_type} color must be a 3- or 6-digit hex color (e.g. #8b949e)")
+    if (
+        not isinstance(color, str)
+        or re.fullmatch(
+            r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?",
+            color,
+        )
+        is None
+    ):
+        raise ValueError(
+            f"{label_type} color must be a 3- or 6-digit hex color "
+            "(e.g. #8b949e)"
+        )
     return (
         f'font-family="sans-serif" font-size="{float(font_size):g}" '
         f'fill="{escape(color)}"'
