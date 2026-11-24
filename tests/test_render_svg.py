@@ -85,6 +85,10 @@ def test_render_svg_customizes_month_and_weekday_label_styles_independently():
     {"weekday_label_font_size": float("inf")},
     {"month_label_color": "red"},
     {"weekday_label_color": "#12345"},
+    {"title_font_size": 0},
+    {"legend_font_size": -1},
+    {"title_color": "red"},
+    {"legend_color": "#12345"},
 ])
 def test_render_svg_rejects_invalid_label_styles(kwargs):
     with pytest.raises(ValueError):
@@ -112,6 +116,46 @@ def test_render_svg_explicit_label_colors_override_theme_defaults():
     )
     assert 'font-size="9" fill="#aabbcc"' in svg
     assert 'font-size="9" fill="#112233"' in svg
+
+
+@pytest.mark.parametrize("theme, expected", [
+    ("github", "#767676"),
+    ("blue", "#767676"),
+    ("purple", "#767676"),
+    ("mono", "#767676"),
+    ("dark", "#FFFFFF"),
+])
+def test_render_svg_chooses_title_and_legend_colors_from_theme(theme, expected):
+    svg = render_svg({date(2024, 1, 1): 1}, theme=theme, label="Run")
+    assert f'font-size="14" font-weight="600" fill="{expected}">Run</text>' in svg
+    assert f'font-size="9" fill="{expected}">Less</text>' in svg
+    assert f'font-size="9" fill="{expected}">More</text>' in svg
+
+
+def test_render_svg_customizes_title_and_legend_styles_independently():
+    svg = render_svg(
+        {date(2024, 1, 1): 1},
+        theme="dark",
+        label="Run",
+        title_font_size=16,
+        title_color="#aabbcc",
+        legend_font_size=11,
+        legend_color="#112233",
+    )
+    assert 'font-size="16" font-weight="600" fill="#aabbcc">Run</text>' in svg
+    assert 'font-size="11" fill="#112233">Less</text>' in svg
+    assert 'font-size="11" fill="#112233">More</text>' in svg
+
+
+def test_render_svg_keeps_title_and_legend_colors_independent():
+    svg = render_svg(
+        {date(2024, 1, 1): 1},
+        theme="dark",
+        label="Run",
+        title_color="#aabbcc",
+    )
+    assert 'font-size="14" font-weight="600" fill="#aabbcc">Run</text>' in svg
+    assert 'font-size="9" fill="#FFFFFF">Less</text>' in svg
 
 
 def test_render_svg_allows_independent_automatic_and_custom_label_colors():
