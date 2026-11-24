@@ -66,6 +66,31 @@ def test_render_svg_labels_each_month_spanned():
         assert f">{month}<" in svg
 
 
+def test_render_svg_customizes_month_and_weekday_label_styles_independently():
+    counts = {date(2024, 1, 1): 1, date(2024, 6, 1): 3}
+    svg = render_svg(
+        counts,
+        month_label_font_size=14,
+        month_label_color="#aabbcc",
+        weekday_label_font_size=12,
+        weekday_label_color="#112233",
+    )
+    assert 'font-size="14" fill="#aabbcc"' in svg
+    assert 'font-size="12" fill="#112233"' in svg
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"month_label_font_size": 0},
+    {"month_label_font_size": -1},
+    {"weekday_label_font_size": float("inf")},
+    {"month_label_color": "red"},
+    {"weekday_label_color": "#12345"},
+])
+def test_render_svg_rejects_invalid_label_styles(kwargs):
+    with pytest.raises(ValueError):
+        render_svg({date(2024, 1, 1): 1}, **kwargs)
+
+
 def test_render_svg_includes_legend_by_default():
     counts = {date(2024, 1, 1): 1}
     svg = render_svg(counts)
