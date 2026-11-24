@@ -64,6 +64,21 @@ def _label_style(font_size: int | float, color: str, label_type: str) -> str:
     )
 
 
+def _default_label_color(theme: str) -> str:
+    """Choose a readable label color from the theme background luminance."""
+    background = THEMES[theme][0]
+    channels = tuple(
+        int(background[index : index + 2], 16) / 255
+        for index in (1, 3, 5)
+    )
+    linear = tuple(
+        channel / 12.92 if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    )
+    luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+    return "#FFFFFF" if luminance < 0.5 else "#767676"
+
 def _weekday_labels(
     start_weekday: int,
     grid_y0: int,
@@ -141,9 +156,9 @@ def render_svg(
     week_start: str = "sunday",
     steps: float | tuple[float, ...] | list[float] | None = None,
     month_label_font_size: int | float = 9,
-    month_label_color: str = "#767676",
+    month_label_color: str | None = None,
     weekday_label_font_size: int | float = 9,
-    weekday_label_color: str = "#767676",
+    weekday_label_color: str | None = None,
 ) -> str:
     """Render ``counts`` as a self-contained SVG contribution heatmap.
 
@@ -158,8 +173,9 @@ def render_svg(
     ``month_label_font_size``, ``month_label_color``,
     ``weekday_label_font_size``, and ``weekday_label_color``.
     Font sizes are positive SVG units; colors must be 3- or 6-digit
-    hexadecimal strings. Both label groups default to 9 units and
-    ``#767676``.
+    hexadecimal strings. Font sizes default to 9 units. If a label color
+    is omitted, Quilt chooses ``#767676`` for a light theme background or
+    ``#FFFFFF`` for a dark one; explicit colors override this per label group.
 
     ``steps`` controls the intensity scale while keeping the five-color
     palette unchanged:
@@ -187,11 +203,16 @@ def render_svg(
     if start > end:
         raise ValueError("start date must be on or before end date")
 
+    automatic_label_color = _default_label_color(theme)
     month_label_style = _label_style(
-        month_label_font_size, month_label_color, "month label"
+        month_label_font_size,
+        month_label_color or automatic_label_color,
+        "month label",
     )
     weekday_label_style = _label_style(
-        weekday_label_font_size, weekday_label_color, "weekday label"
+        weekday_label_font_size,
+        weekday_label_color or automatic_label_color,
+        "weekday label",
     )
 
     palette = THEMES[theme]
