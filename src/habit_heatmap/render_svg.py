@@ -28,7 +28,6 @@ MONTH_NAMES = (
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 )
 FONT = 'font-family="sans-serif" font-size="9" fill="#767676"'
-TITLE_FONT = 'font-family="sans-serif" font-size="14" font-weight="600" fill="#24292f"'
 
 
 def _week_start(day: date, start_weekday: int) -> date:
@@ -37,8 +36,14 @@ def _week_start(day: date, start_weekday: int) -> date:
     return day - timedelta(days=(day.weekday() - start_weekday) % 7)
 
 
-def _label_style(font_size: int | float, color: str, label_type: str) -> str:
-    """Validate and build an SVG text style for month/weekday labels."""
+def _label_style(
+    font_size: int | float,
+    color: str,
+    label_type: str,
+    *,
+    font_weight: str | None = None,
+) -> str:
+    """Validate and build an SVG text style for a text element."""
     if (
         isinstance(font_size, bool)
         or not isinstance(font_size, Real)
@@ -58,9 +63,10 @@ def _label_style(font_size: int | float, color: str, label_type: str) -> str:
             f"{label_type} color must be a 3- or 6-digit hex color "
             "(e.g. #8b949e)"
         )
+    weight = f' font-weight="{escape(font_weight)}"' if font_weight else ""
     return (
-        f'font-family="sans-serif" font-size="{float(font_size):g}" '
-        f'fill="{escape(color)}"'
+        f'font-family="sans-serif" font-size="{float(font_size):g}"'
+        f'{weight} fill="{escape(color)}"'
     )
 
 
@@ -129,9 +135,15 @@ def _month_labels(
     return labels
 
 
-def _legend(palette: tuple[str, ...], x0: int, y: int, cell_size: int) -> list[str]:
+def _legend(
+    palette: tuple[str, ...],
+    x0: int,
+    y: int,
+    cell_size: int,
+    font_style: str = FONT,
+) -> list[str]:
     """Build a "Less ... More" legend strip using ``palette``'s own colors."""
-    elements = [f'<text x="{x0}" y="{y + cell_size - 1}" {FONT}>Less</text>']
+    elements = [f'<text x="{x0}" y="{y + cell_size - 1}" {font_style}>Less</text>']
     swatch_x = x0 + LEGEND_LESS_WIDTH
     stride = cell_size + LEGEND_SWATCH_GAP
     for color in palette:
@@ -140,7 +152,7 @@ def _legend(palette: tuple[str, ...], x0: int, y: int, cell_size: int) -> list[s
             f'rx="2" ry="2" fill="{color}"/>'
         )
         swatch_x += stride
-    elements.append(f'<text x="{swatch_x}" y="{y + cell_size - 1}" {FONT}>More</text>')
+    elements.append(f'<text x="{swatch_x}" y="{y + cell_size - 1}" {font_style}>More</text>')
     return elements
 
 
@@ -159,6 +171,10 @@ def render_svg(
     month_label_color: str | None = None,
     weekday_label_font_size: int | float = 9,
     weekday_label_color: str | None = None,
+    title_font_size: int | float = 14,
+    title_color: str | None = None,
+    legend_font_size: int | float = 9,
+    legend_color: str | None = None,
 ) -> str:
     """Render ``counts`` as a self-contained SVG contribution heatmap.
 
@@ -169,13 +185,12 @@ def render_svg(
     render a title above the chart. ``week_start`` is ``"sunday"``
     (GitHub-style) or ``"monday"`` (ISO week convention).
 
-    Month and weekday labels can be styled independently with
-    ``month_label_font_size``, ``month_label_color``,
-    ``weekday_label_font_size``, and ``weekday_label_color``.
-    Font sizes are positive SVG units; colors must be 3- or 6-digit
-    hexadecimal strings. Font sizes default to 9 units. If a label color
-    is omitted, Quilt chooses ``#767676`` for a light theme background or
-    ``#FFFFFF`` for a dark one; explicit colors override this per label group.
+    Month, weekday, title, and legend text can be styled independently with their
+    respective font-size and color arguments. Font sizes are positive SVG units;
+    colors must be 3- or 6-digit hexadecimal strings. Month, weekday, and legend
+    font sizes default to 9 SVG units; the title defaults to 14. If a text color
+    is omitted, Quilt chooses #767676 for a light theme background or #FFFFFF for
+    a dark one. Explicit colors override the theme-aware default for that group.
 
     ``steps`` controls the intensity scale while keeping the five-color
     palette unchanged:
@@ -213,6 +228,17 @@ def render_svg(
         weekday_label_font_size,
         automatic_label_color if weekday_label_color is None else weekday_label_color,
         "weekday label",
+    )
+    title_style = _label_style(
+        title_font_size,
+        automatic_label_color if title_color is None else title_color,
+        "title",
+        font_weight="600",
+    )
+    legend_style = _label_style(
+        legend_font_size,
+        automatic_label_color if legend_color is None else legend_color,
+        "legend",
     )
 
     palette = THEMES[theme]
@@ -259,12 +285,18 @@ def render_svg(
         grid_start, start, weeks, stride, grid_x0, grid_y0 - 4, month_label_style
     )
     legend_elements = (
-        _legend(palette, grid_x0, grid_y0 + 7 * stride + (LEGEND_HEIGHT - cell_size), cell_size)
+        _legend(
+            palette,
+            grid_x0,
+            grid_y0 + 7 * stride + (LEGEND_HEIGHT - cell_size),
+            cell_size,
+            legend_style,
+        )
         if legend
         else []
     )
     title = (
-        [f'<text x="{MARGIN}" y="{MARGIN + 14}" {TITLE_FONT}>{escape(label)}</text>']
+        [f'<text x="{MARGIN}" y="{MARGIN + 14}" {title_style}>{escape(label)}</text>']
         if label
         else []
     )
