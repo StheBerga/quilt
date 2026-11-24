@@ -60,6 +60,16 @@ def test_cli_applies_month_and_weekday_label_styles(tmp_path):
             "12",
             "--weekday-label-color",
             "#112233",
+            "--label",
+            "Run",
+            "--title-font-size",
+            "16",
+            "--title-color",
+            "#334455",
+            "--legend-font-size",
+            "11",
+            "--legend-color",
+            "#556677",
         ],
         capture_output=True,
         text=True,
@@ -68,6 +78,8 @@ def test_cli_applies_month_and_weekday_label_styles(tmp_path):
     svg = output.read_text()
     assert 'font-size="14" fill="#aabbcc"' in svg
     assert 'font-size="12" fill="#112233"' in svg
+    assert 'font-size="16" font-weight="600" fill="#334455">Run</text>' in svg
+    assert 'font-size="11" fill="#556677">Less</text>' in svg
 
 
 def test_cli_applies_tz(tmp_path):
