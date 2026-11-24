@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
+from math import isfinite
+from numbers import Real
 from xml.sax.saxutils import escape
 
 from .colors import THEMES, color_for_steps, resolve_steps
@@ -34,18 +37,72 @@ def _week_start(day: date, start_weekday: int) -> date:
     return day - timedelta(days=(day.weekday() - start_weekday) % 7)
 
 
-def _weekday_labels(start_weekday: int, grid_y0: int, stride: int, cell_size: int) -> list[str]:
+def _label_style(font_size: int | float, color: str, label_type: str) -> str:
+    """Validate and build an SVG text style for month/weekday labels."""
+    if (
+        isinstance(font_size, bool)
+        or not isinstance(font_size, Real)
+        or not isfinite(float(font_size))
+        or font_size <= 0
+    ):
+        raise ValueError(f"{label_type} font size must be a positive finite number")
+    if (
+        not isinstance(color, str)
+        or re.fullmatch(
+            r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?",
+            color,
+        )
+        is None
+    ):
+        raise ValueError(
+            f"{label_type} color must be a 3- or 6-digit hex color "
+            "(e.g. #8b949e)"
+        )
+    return (
+        f'font-family="sans-serif" font-size="{float(font_size):g}" '
+        f'fill="{escape(color)}"'
+    )
+
+
+def _default_label_color(theme: str) -> str:
+    """Choose a readable label color from the theme background luminance."""
+    background = THEMES[theme][0]
+    channels = tuple(
+        int(background[index : index + 2], 16) / 255
+        for index in (1, 3, 5)
+    )
+    linear = tuple(
+        channel / 12.92 if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    )
+    luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+    return "#FFFFFF" if luminance < 0.5 else "#767676"
+
+def _weekday_labels(
+    start_weekday: int,
+    grid_y0: int,
+    stride: int,
+    cell_size: int,
+    font_style: str = FONT,
+) -> list[str]:
     """Build the Mon/Wed/Fri labels beside the grid, positioned by row."""
     labels = []
     for py_weekday, text in WEEKDAY_LABEL_TEXT.items():
         row = (py_weekday - start_weekday) % 7
         y = grid_y0 + row * stride + cell_size - 1
-        labels.append(f'<text x="{MARGIN}" y="{y}" {FONT}>{text}</text>')
+        labels.append(f'<text x="{MARGIN}" y="{y}" {font_style}>{text}</text>')
     return labels
 
 
 def _month_labels(
-    grid_start: date, start: date, weeks: int, stride: int, x0: int, y: int
+    grid_start: date,
+    start: date,
+    weeks: int,
+    stride: int,
+    x0: int,
+    y: int,
+    font_style: str = FONT,
 ) -> list[str]:
     """Build a month-name label for each week column where a new month begins.
 
@@ -68,7 +125,7 @@ def _month_labels(
             continue
         last_labeled_week = week_index
         x = x0 + week_index * stride
-        labels.append(f'<text x="{x}" y="{y}" {FONT}>{MONTH_NAMES[month - 1]}</text>')
+        labels.append(f'<text x="{x}" y="{y}" {font_style}>{MONTH_NAMES[month - 1]}</text>')
     return labels
 
 
@@ -98,6 +155,10 @@ def render_svg(
     label: str | None = None,
     week_start: str = "sunday",
     steps: float | tuple[float, ...] | list[float] | None = None,
+    month_label_font_size: int | float = 9,
+    month_label_color: str | None = None,
+    weekday_label_font_size: int | float = 9,
+    weekday_label_color: str | None = None,
 ) -> str:
     """Render ``counts`` as a self-contained SVG contribution heatmap.
 
@@ -107,6 +168,14 @@ def render_svg(
     "Less ... More" color-scale strip below the grid, or ``label`` to
     render a title above the chart. ``week_start`` is ``"sunday"``
     (GitHub-style) or ``"monday"`` (ISO week convention).
+
+    Month and weekday labels can be styled independently with
+    ``month_label_font_size``, ``month_label_color``,
+    ``weekday_label_font_size``, and ``weekday_label_color``.
+    Font sizes are positive SVG units; colors must be 3- or 6-digit
+    hexadecimal strings. Font sizes default to 9 units. If a label color
+    is omitted, Quilt chooses ``#767676`` for a light theme background or
+    ``#FFFFFF`` for a dark one; explicit colors override this per label group.
 
     ``steps`` controls the intensity scale while keeping the five-color
     palette unchanged:
@@ -133,6 +202,18 @@ def render_svg(
     start = start or min(counts)
     if start > end:
         raise ValueError("start date must be on or before end date")
+
+    automatic_label_color = _default_label_color(theme)
+    month_label_style = _label_style(
+        month_label_font_size,
+        automatic_label_color if month_label_color is None else month_label_color,
+        "month label",
+    )
+    weekday_label_style = _label_style(
+        weekday_label_font_size,
+        automatic_label_color if weekday_label_color is None else weekday_label_color,
+        "weekday label",
+    )
 
     palette = THEMES[theme]
     in_range_values = [value for day, value in counts.items() if start <= day <= end]
@@ -171,8 +252,12 @@ def render_svg(
             )
         day += timedelta(days=1)
 
-    weekday_labels = _weekday_labels(start_weekday, grid_y0, stride, cell_size)
-    month_labels = _month_labels(grid_start, start, weeks, stride, grid_x0, grid_y0 - 4)
+    weekday_labels = _weekday_labels(
+        start_weekday, grid_y0, stride, cell_size, weekday_label_style
+    )
+    month_labels = _month_labels(
+        grid_start, start, weeks, stride, grid_x0, grid_y0 - 4, month_label_style
+    )
     legend_elements = (
         _legend(palette, grid_x0, grid_y0 + 7 * stride + (LEGEND_HEIGHT - cell_size), cell_size)
         if legend

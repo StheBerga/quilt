@@ -66,6 +66,63 @@ def test_render_svg_labels_each_month_spanned():
         assert f">{month}<" in svg
 
 
+def test_render_svg_customizes_month_and_weekday_label_styles_independently():
+    counts = {date(2024, 1, 1): 1, date(2024, 6, 1): 3}
+    svg = render_svg(
+        counts,
+        month_label_font_size=14,
+        month_label_color="#aabbcc",
+        weekday_label_font_size=12,
+        weekday_label_color="#112233",
+    )
+    assert 'font-size="14" fill="#aabbcc"' in svg
+    assert 'font-size="12" fill="#112233"' in svg
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"month_label_font_size": 0},
+    {"month_label_font_size": -1},
+    {"weekday_label_font_size": float("inf")},
+    {"month_label_color": "red"},
+    {"weekday_label_color": "#12345"},
+])
+def test_render_svg_rejects_invalid_label_styles(kwargs):
+    with pytest.raises(ValueError):
+        render_svg({date(2024, 1, 1): 1}, **kwargs)
+
+
+@pytest.mark.parametrize("theme, expected", [
+    ("github", "#767676"),
+    ("blue", "#767676"),
+    ("purple", "#767676"),
+    ("mono", "#767676"),
+    ("dark", "#FFFFFF"),
+])
+def test_render_svg_chooses_label_color_from_theme(theme, expected):
+    svg = render_svg({date(2024, 1, 1): 1}, theme=theme)
+    assert f'font-size="9" fill="{expected}"' in svg
+
+
+def test_render_svg_explicit_label_colors_override_theme_defaults():
+    svg = render_svg(
+        {date(2024, 1, 1): 1},
+        theme="dark",
+        month_label_color="#aabbcc",
+        weekday_label_color="#112233",
+    )
+    assert 'font-size="9" fill="#aabbcc"' in svg
+    assert 'font-size="9" fill="#112233"' in svg
+
+
+def test_render_svg_allows_independent_automatic_and_custom_label_colors():
+    svg = render_svg(
+        {date(2024, 1, 1): 1},
+        theme="dark",
+        month_label_color="#aabbcc",
+    )
+    assert 'font-size="9" fill="#aabbcc"' in svg
+    assert 'font-size="9" fill="#FFFFFF"' in svg
+
 def test_render_svg_includes_legend_by_default():
     counts = {date(2024, 1, 1): 1}
     svg = render_svg(counts)

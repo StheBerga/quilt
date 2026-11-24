@@ -151,6 +151,10 @@ THEMES["sunset"] = ("#fff5eb", "#fdbe85", "#fd8d3c", "#e6550d", "#a63603")
 
 Then pass `theme="sunset"` to `render_svg` or `--theme sunset` on the CLI.
 
+### Label appearance
+
+Month and weekday labels have independent font sizes and optional colors. If a color is not supplied, Quilt derives it from the selected theme's background: light backgrounds use `#767676`, while dark backgrounds use `#FFFFFF`. Set `month_label_color` / `weekday_label_color` in `render_svg`, or pass `--month-label-color` / `--weekday-label-color` on the CLI, to override either color independently. Font sizes default to `9` SVG units.
+
 ### CLI flags
 
 | Flag | Purpose |
@@ -163,6 +167,10 @@ Then pass `theme="sunset"` to `render_svg` or `--theme sunset` on the CLI.
 | `--theme NAME` | One of the five built-in palettes |
 | `--steps VALUE` | One positive step width or four comma-separated positive widths |
 | `--label TEXT` | Title rendered above the grid |
+| `--month-label-font-size SIZE` | Month-label font size in SVG units (default: `9`) |
+| `--month-label-color COLOR` | Month-label hex color (default: automatic from theme) |
+| `--weekday-label-font-size SIZE` | Weekday-label font size in SVG units (default: `9`) |
+| `--weekday-label-color COLOR` | Weekday-label hex color (default: automatic from theme) |
 | `--week-start {sunday,monday}` | First weekday of each column (default: `sunday`) |
 | `--verbose` | Print the `wrote <path>` confirmation (silent by default) |
 | `--version` | Print the installed version and exit |

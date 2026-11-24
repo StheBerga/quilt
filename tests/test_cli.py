@@ -42,6 +42,34 @@ def test_cli_applies_label(tmp_path):
     assert ">Gym<" in output.read_text()
 
 
+def test_cli_applies_month_and_weekday_label_styles(tmp_path):
+    output = tmp_path / "heatmap.svg"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "habit_heatmap",
+            str(FIXTURE),
+            "-o",
+            str(output),
+            "--month-label-font-size",
+            "14",
+            "--month-label-color",
+            "#aabbcc",
+            "--weekday-label-font-size",
+            "12",
+            "--weekday-label-color",
+            "#112233",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    svg = output.read_text()
+    assert 'font-size="14" fill="#aabbcc"' in svg
+    assert 'font-size="12" fill="#112233"' in svg
+
+
 def test_cli_applies_tz(tmp_path):
     csv_path = tmp_path / "events.csv"
     # Both fall on Jan 1 in America/Chicago (UTC-6), so with --tz the whole
