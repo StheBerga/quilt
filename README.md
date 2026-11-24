@@ -163,6 +163,10 @@ Then pass `theme="sunset"` to `render_svg` or `--theme sunset` on the CLI.
 | `--theme NAME` | One of the five built-in palettes |
 | `--steps VALUE` | One positive step width or four comma-separated positive widths |
 | `--label TEXT` | Title rendered above the grid |
+| `--month-label-font-size SIZE` | Month-label font size in SVG units (default: `9`) |
+| `--month-label-color COLOR` | Month-label hex color (default: `#767676`) |
+| `--weekday-label-font-size SIZE` | Weekday-label font size in SVG units (default: `9`) |
+| `--weekday-label-color COLOR` | Weekday-label hex color (default: `#767676`) |
 | `--week-start {sunday,monday}` | First weekday of each column (default: `sunday`) |
 | `--verbose` | Print the `wrote <path>` confirmation (silent by default) |
 | `--version` | Print the installed version and exit |
