@@ -108,6 +108,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="hex color for weekday labels (default: automatic from theme)",
     )
     parser.add_argument(
+        "--title-font-size",
+        type=float,
+        default=14,
+        help="font size for the title in SVG units (default: 14)",
+    )
+    parser.add_argument(
+        "--title-color",
+        default=None,
+        help="hex color for the title (default: automatic from theme)",
+    )
+    parser.add_argument(
+        "--legend-font-size",
+        type=float,
+        default=9,
+        help="font size for legend text in SVG units (default: 9)",
+    )
+    parser.add_argument(
+        "--legend-color",
+        default=None,
+        help="hex color for legend text (default: automatic from theme)",
+    )
+    parser.add_argument(
         "--week-start",
         default="sunday",
         choices=("sunday", "monday"),
@@ -146,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
             month_label_color=args.month_label_color,
             weekday_label_font_size=args.weekday_label_font_size,
             weekday_label_color=args.weekday_label_color,
+            title_font_size=args.title_font_size,
+            title_color=args.title_color,
+            legend_font_size=args.legend_font_size,
+            legend_color=args.legend_color,
         )
 
         if args.output == "-":
