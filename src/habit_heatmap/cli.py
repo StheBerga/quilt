@@ -93,8 +93,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--month-label-color",
-        default="#767676",
-        help="hex color for month labels (default: #767676)",
+        default=None,
+        help="hex color for month labels (default: automatic from theme)",
     )
     parser.add_argument(
         "--weekday-label-font-size",
@@ -104,8 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--weekday-label-color",
-        default="#767676",
-        help="hex color for weekday labels (default: #767676)",
+        default=None,
+        help="hex color for weekday labels (default: automatic from theme)",
     )
     parser.add_argument(
         "--week-start",
