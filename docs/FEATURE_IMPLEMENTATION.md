@@ -1,0 +1,182 @@
+# Feature implementation notes
+
+This document describes the two feature groups added to the `heatmap-customization`
+branch and how each is implemented across the Python API, SVG renderer, CLI, and tests.
+
+## 1. Configurable intensity thresholds
+
+### Intended behavior
+
+Quilt uses a five-color palette. The lightest color is reserved for zero and
+negative values, leaving four colors for positive values. Therefore, three
+thresholds are needed to define the three transitions between those four
+positive-intensity colors.
+
+The `steps` argument contains the **absolute values at which the color changes**.
+They are not interval widths, increments, or values to be accumulated.
+
+For example, `steps=[5, 20, 50]` means:
+
+| Input value | Palette color |
+| --- | --- |
+| `value <= 0` | Lightest / no-activity color |
+| `0 < value < 5` | First positive-intensity color |
+| `5 <= value < 20` | Second positive-intensity color |
+| `20 <= value < 50` | Third positive-intensity color |
+| `value >= 50` | Darkest color |
+
+A value exactly equal to a threshold uses the color beginning at that threshold.
+The values are used unchanged: no cumulative sum is calculated.
+
+### Automatic scaling
+
+When `steps=None` (the default), Quilt preserves its original range-relative
+behavior. If the maximum value in the rendered date range is `M > 0`, the
+three boundaries are `M/4`, `M/2`, and `3M/4`. Values outside an explicit
+`start` / `end` rendering window do not affect this maximum.
+
+If the in-range maximum is not positive, the automatic scale renders cells with
+the lightest color.
+
+### Python API
+
+```python
+svg = render_svg(counts, steps=[5, 20, 50])
+```
+
+The argument must be a sequence containing exactly three numeric thresholds.
+Each threshold must be positive and finite, and the sequence must be strictly
+increasing. Invalid values raise `ValueError`.
+
+### CLI
+
+```bash
+habit-heatmap input.csv -o heatmap.svg --value-col minutes --steps 5,20,50
+```
+
+The CLI accepts exactly three comma-separated thresholds. Malformed input and
+non-positive, non-finite, or non-increasing values are rejected by argument
+parsing, before the input CSV is processed.
+
+### Implementation by file
+
+- **`src/habit_heatmap/colors.py`**
+  - `resolve_steps(max_value, steps=None)` returns the three boundaries.
+    With no custom sequence it calculates the original automatic boundaries;
+    with a custom sequence it validates and returns the supplied values as-is.
+  - `color_for_steps(value, thresholds, palette)` maps a value to a palette
+    color. Zero and negative values use palette index 0; positive values move
+    to the next color when `value >= threshold`.
+  - `bucket_color(..., steps=None)` preserves the existing convenience API
+    and adds optional absolute thresholds.
+- **`src/habit_heatmap/render_svg.py`**
+  - `render_svg(..., steps=None)` exposes the thresholds in the public renderer.
+  - The renderer calculates the maximum from values inside the rendered date
+    range, resolves the boundaries once, and uses `color_for_steps` for each
+    day cell.
+  - The automatic all-non-positive case remains lightest when `steps` is
+    omitted. Explicit thresholds can still color positive values independently
+    of the observed maximum.
+- **`src/habit_heatmap/cli.py`**
+  - `parse_steps` parses the three comma-separated values and validates their
+    count, finiteness, positivity, and strict ordering.
+  - `--steps` passes the resulting tuple to `render_svg`.
+- **Tests**
+  - `tests/test_colors.py` checks automatic boundaries, exact threshold
+    boundaries, values between and above thresholds, and invalid sequences.
+  - `tests/test_render_svg.py` checks the actual SVG cell fill at and around
+    each supplied threshold, plus unchanged automatic scaling.
+  - `tests/test_cli.py` checks CLI threshold application and rejects malformed
+    or invalid threshold arguments.
+
+## 2. Independent SVG text styling
+
+### Intended behavior
+
+Four SVG text groups can be styled independently:
+
+1. Month labels
+2. Weekday labels
+3. Optional chart title
+4. Legend text (`Less` / `More`)
+
+Each group has its own font-size and color argument. This allows a caller to
+change one text group without changing the others.
+
+Font sizes must be positive finite numbers. Explicit colors must be 3- or
+6-digit hexadecimal strings. When a color is omitted, Quilt chooses a readable
+default from the selected theme's background: `#767676` for light backgrounds
+and `#FFFFFF` for dark backgrounds. An explicit color overrides the default
+only for its own text group.
+
+### Python API
+
+```python
+svg = render_svg(
+    counts,
+    label="Activity",
+    month_label_font_size=11,
+    month_label_color="#767676",
+    weekday_label_font_size=10,
+    weekday_label_color="#767676",
+    title_font_size=16,
+    title_color="#24292f",
+    legend_font_size=9,
+    legend_color="#767676",
+)
+```
+
+The defaults are 9 SVG units for month labels, weekday labels, and legend text,
+and 14 for the title. Text colors default from the theme.
+
+### CLI
+
+The renderer options are exposed with hyphenated CLI flags:
+
+- `--month-label-font-size` / `--month-label-color`
+- `--weekday-label-font-size` / `--weekday-label-color`
+- `--title-font-size` / `--title-color`
+- `--legend-font-size` / `--legend-color`
+
+For example:
+
+```bash
+habit-heatmap input.csv -o heatmap.svg \
+  --label "Activity" \
+  --title-font-size 16 --title-color "#24292f" \
+  --legend-font-size 10 --legend-color "#767676"
+```
+
+### Implementation by file
+
+- **`src/habit_heatmap/render_svg.py`**
+  - `_label_style` validates a text group's font size and color and produces
+    the SVG style attributes. It supports an optional font weight for the title.
+  - `_default_label_color` derives the default text color from the background
+    color of the selected theme.
+  - `_weekday_labels`, `_month_labels`, and `_legend` accept a style string
+    so their text can be configured independently.
+  - `render_svg` exposes the eight public styling arguments and builds a
+    separate style for each text group. The title is styled only when a label
+    is supplied.
+- **`src/habit_heatmap/cli.py`**
+  - Defines the eight corresponding command-line options and forwards their
+    values to `render_svg`.
+- **Tests**
+  - `tests/test_render_svg.py` checks independent styling, theme-derived
+    defaults, explicit overrides, and invalid font sizes/colors.
+  - `tests/test_cli.py` checks that the CLI forwards each style option and
+    that the resulting SVG contains the expected text attributes.
+
+## Validation
+
+The project contribution guide asks contributors to run:
+
+```bash
+pytest
+ruff check .
+```
+
+These checks should be run against the final branch before opening a pull
+request. The tests described above are the regression coverage for these
+feature groups; this document does not claim that a test run was performed.
