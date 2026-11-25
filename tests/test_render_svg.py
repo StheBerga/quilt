@@ -242,34 +242,25 @@ def _rect_fill(svg: str, day: str) -> str:
     return match.group(1)
 
 
-def test_render_svg_accepts_a_fixed_numeric_step_width():
-    counts = {
-        date(2024, 1, 1): 9,
-        date(2024, 1, 2): 10,
-        date(2024, 1, 3): 20,
-        date(2024, 1, 4): 30,
-    }
-    svg = render_svg(counts, steps=10, legend=False)
-    assert _rect_fill(svg, "2024-01-01") == "#9be9a8"
-    assert _rect_fill(svg, "2024-01-02") == "#40c463"
-    assert _rect_fill(svg, "2024-01-03") == "#30a14e"
-    assert _rect_fill(svg, "2024-01-04") == "#216e39"
-
-
-def test_render_svg_accepts_four_custom_step_widths():
+def test_render_svg_uses_three_exact_color_change_thresholds():
     counts = {
         date(2024, 1, 1): 4,
         date(2024, 1, 2): 5,
         date(2024, 1, 3): 19,
         date(2024, 1, 4): 20,
-        date(2024, 1, 5): 50,
+        date(2024, 1, 5): 49,
+        date(2024, 1, 6): 50,
+        date(2024, 1, 7): 150,
     }
-    svg = render_svg(counts, steps=[5, 15, 30, 60], legend=False)
+    svg = render_svg(counts, steps=[5, 20, 50], legend=False)
+
     assert _rect_fill(svg, "2024-01-01") == "#9be9a8"
     assert _rect_fill(svg, "2024-01-02") == "#40c463"
     assert _rect_fill(svg, "2024-01-03") == "#40c463"
     assert _rect_fill(svg, "2024-01-04") == "#30a14e"
-    assert _rect_fill(svg, "2024-01-05") == "#216e39"
+    assert _rect_fill(svg, "2024-01-05") == "#30a14e"
+    assert _rect_fill(svg, "2024-01-06") == "#216e39"
+    assert _rect_fill(svg, "2024-01-07") == "#216e39"
 
 
 def test_render_svg_default_scaling_retains_existing_boundaries():
@@ -288,6 +279,19 @@ def test_render_svg_default_scaling_retains_existing_boundaries():
     assert _rect_fill(svg, "2024-01-05") == "#216e39"
 
 
-def test_render_svg_rejects_invalid_steps():
-    with pytest.raises(ValueError, match="exactly four"):
-        render_svg({date(2024, 1, 1): 1}, steps=[1, 2, 3], legend=False)
+@pytest.mark.parametrize(
+    "steps",
+    [
+        10,
+        [1, 2],
+        [1, 2, 3, 4],
+        [0, 2, 3],
+        [1, 2, 2],
+        [1, 3, 2],
+        [1, float("nan"), 3],
+        [1, 2, float("inf")],
+    ],
+)
+def test_render_svg_rejects_invalid_steps(steps):
+    with pytest.raises(ValueError):
+        render_svg({date(2024, 1, 1): 1}, steps=steps, legend=False)
