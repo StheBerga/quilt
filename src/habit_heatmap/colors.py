@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections.abc import Sequence
 from math import isfinite
 from numbers import Real
 
-# GitHub's classic green scale, lightest (no activity) to darkest.
+# GitHub classic green scale, lightest to darkest.
 GITHUB_GREEN = ("#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39")
 
 THEMES: dict[str, tuple[str, ...]] = {
@@ -21,57 +22,54 @@ THEMES: dict[str, tuple[str, ...]] = {
 def resolve_steps(
     max_value: float,
     steps: Sequence[float] | None = None,
-) -> tuple[float, float, float]:
-    """Return the three color-change thresholds for a five-color scale.
+) -> tuple[float, float, float, float, float]:
+    """Resolve five ordered intensity levels, one for each palette color.
 
-    If steps is None, preserve Quilt's original behavior by placing the
-    thresholds at one quarter, one half, and three quarters of the observed
-    maximum. Otherwise, steps must contain exactly three positive, finite,
-    strictly increasing threshold values. The supplied values are used
-    directly; they are never treated as interval widths or accumulated.
+    When omitted, return the five reference levels for the automatic scale.
+    When supplied, ``steps`` must contain exactly five finite, strictly
+    increasing numeric values. Each value is the lower level associated with
+    its corresponding palette color. Values below the first level use the
+    first color; reaching each subsequent level changes to its color.
 
-    The lightest palette color is reserved for zero and negative values.
-    The three thresholds separate the four colors used for positive values.
-    Values at or above the third threshold use the darkest color.
+    The five entries are levels, not interval widths. They are never added
+    together or interpreted cumulatively.
     """
     if steps is None:
         width = max_value / 4 if max_value > 0 else 0.0
-        return (width, 2 * width, 3 * width)
+        return (0.0, width, 2 * width, 3 * width, max_value)
 
     if isinstance(steps, (str, bytes)) or not isinstance(steps, Sequence):
         raise ValueError(
-            "steps must be a sequence of exactly three positive, "
-            "strictly increasing numeric thresholds"
+            "steps must be a sequence of exactly five finite, "
+            "strictly increasing numeric levels"
         )
-    if len(steps) != 3:
-        raise ValueError("steps must contain exactly three thresholds")
+    if len(steps) != 5:
+        raise ValueError("steps must contain exactly five intensity levels")
 
     if any(isinstance(value, bool) or not isinstance(value, Real) for value in steps):
-        raise ValueError("all step thresholds must be numeric")
+        raise ValueError("all step levels must be numeric")
 
-    thresholds = tuple(float(value) for value in steps)
-    if not all(isfinite(value) and value > 0 for value in thresholds):
-        raise ValueError("all step thresholds must be positive and finite")
-    if not (thresholds[0] < thresholds[1] < thresholds[2]):
-        raise ValueError("step thresholds must be strictly increasing")
+    levels = tuple(float(value) for value in steps)
+    if not all(isfinite(value) for value in levels):
+        raise ValueError("all step levels must be finite")
+    if not all(left < right for left, right in zip(levels, levels[1:])):
+        raise ValueError("step levels must be strictly increasing")
 
-    return thresholds
+    return levels
 
 
 def color_for_steps(
     value: float,
-    thresholds: Sequence[float],
+    levels: Sequence[float],
     palette: tuple[str, ...],
 ) -> str:
-    """Map value to a palette color using exact threshold values.
+    """Map ``value`` to the color for the greatest configured level it reaches.
 
-    Zero and negative values use the no-activity color. A positive value
-    moves to the next color when it is greater than or equal to a threshold.
+    Each level corresponds to the palette entry at the same index. Values
+    below the first level are clamped to the first color, and values at or
+    above the last level use the darkest color.
     """
-    if value <= 0:
-        return palette[0]
-
-    index = 1 + sum(value >= threshold for threshold in thresholds)
+    index = max(0, bisect_right(levels, value) - 1)
     return palette[min(index, len(palette) - 1)]
 
 
@@ -81,11 +79,17 @@ def bucket_color(
     palette: tuple[str, ...],
     steps: Sequence[float] | None = None,
 ) -> str:
-    """Map value to a palette color.
+    """Map a value to a palette color.
 
-    The three-argument call retains the original automatic scaling.
-    The optional steps argument supplies the three exact color-change thresholds.
+    Without custom ``steps``, retain Quilt original automatic scale. With
+    ``steps``, require five absolute intensity levels, one per palette color.
     """
-    if value <= 0 or (steps is None and max_value <= 0):
-        return palette[0]
-    return color_for_steps(value, resolve_steps(max_value, steps), palette)
+    if steps is None:
+        if value <= 0 or max_value <= 0:
+            return palette[0]
+        width = max_value / (len(palette) - 1)
+        index = min(len(palette) - 1, int(value / width) + 1)
+        return palette[index]
+
+    levels = resolve_steps(max_value, steps)
+    return color_for_steps(value, levels, palette)
