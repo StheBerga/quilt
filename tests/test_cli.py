@@ -42,6 +42,46 @@ def test_cli_applies_label(tmp_path):
     assert ">Gym<" in output.read_text()
 
 
+def test_cli_applies_month_and_weekday_label_styles(tmp_path):
+    output = tmp_path / "heatmap.svg"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "habit_heatmap",
+            str(FIXTURE),
+            "-o",
+            str(output),
+            "--month-label-font-size",
+            "14",
+            "--month-label-color",
+            "#aabbcc",
+            "--weekday-label-font-size",
+            "12",
+            "--weekday-label-color",
+            "#112233",
+            "--label",
+            "Run",
+            "--title-font-size",
+            "16",
+            "--title-color",
+            "#334455",
+            "--legend-font-size",
+            "11",
+            "--legend-color",
+            "#556677",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    svg = output.read_text()
+    assert 'font-size="14" fill="#aabbcc"' in svg
+    assert 'font-size="12" fill="#112233"' in svg
+    assert 'font-size="16" font-weight="600" fill="#334455">Run</text>' in svg
+    assert 'font-size="11" fill="#556677">Less</text>' in svg
+
+
 def test_cli_applies_tz(tmp_path):
     csv_path = tmp_path / "events.csv"
     # Both fall on Jan 1 in America/Chicago (UTC-6), so with --tz the whole
@@ -365,3 +405,87 @@ def test_cli_reports_empty_range_without_a_traceback(tmp_path):
     assert not output.exists()
     assert "Traceback" not in result.stderr
     assert "habit-heatmap: error:" in result.stderr
+
+
+
+def test_cli_accepts_single_step_width(tmp_path):
+    output = tmp_path / "heatmap.svg"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "habit_heatmap",
+            str(FIXTURE),
+            "-o",
+            str(output),
+            "--steps",
+            "10",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.exists()
+    assert output.read_text().startswith("<svg")
+
+
+def test_cli_accepts_four_custom_step_widths(tmp_path):
+    output = tmp_path / "heatmap.svg"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "habit_heatmap",
+            str(FIXTURE),
+            "-o",
+            str(output),
+            "--steps",
+            "1,2,3,4",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.exists()
+
+
+@pytest.mark.parametrize("steps", ["0", "-5", "nan", "inf"])
+def test_cli_rejects_nonpositive_or_nonfinite_steps(tmp_path, steps):
+    output = tmp_path / "heatmap.svg"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "habit_heatmap",
+            str(FIXTURE),
+            "-o",
+            str(output),
+            "--steps",
+            steps,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("steps", ["1,2", "1,2,3", "1,2,3,4,5", "invalid"])
+def test_cli_rejects_malformed_step_widths(tmp_path, steps):
+    output = tmp_path / "heatmap.svg"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "habit_heatmap",
+            str(FIXTURE),
+            "-o",
+            str(output),
+            "--steps",
+            steps,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert not output.exists()
