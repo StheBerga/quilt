@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import re
+from collections.abc import Sequence
 from datetime import date, timedelta
 from math import isfinite
 from numbers import Real
