@@ -85,39 +85,38 @@ svg = render_svg(counts, theme="blue", label="Workouts")
 
 ### Custom intensity thresholds
 
-By default, Quilt places the three color-change thresholds at one quarter, one
+By default, Quilt uses four color-change boundaries at zero, one quarter, one
 half, and three quarters of the largest value in the rendered date range. This
 preserves the original automatic scaling.
 
 Use `steps` to define the exact values where a cell moves to the next color:
 
 ```python
-svg = render_svg(counts, steps=[5, 20, 50])
+svg = render_svg(counts, steps=[5, 20, 50, 100])
 ```
 
-The five-color palette reserves its lightest color for zero and negative values.
-That leaves four colors for positive values, separated by **three thresholds**.
-The thresholds must be positive, finite, and strictly increasing, and are used
-exactly as supplied:
+The five-color palette has **four color-change thresholds**, producing five
+intensity bands. The thresholds must be positive, finite, and strictly
+increasing, and are used exactly as supplied:
 
 | Value | Color |
 | --- | --- |
-| `<= 0` | Lightest (no activity) |
-| `0 < value < 5` | First positive color |
-| `5 <= value < 20` | Second positive color |
-| `20 <= value < 50` | Third positive color |
-| `value >= 50` | Darkest positive color |
+| `value < 5` | Lightest color |
+| `5 <= value < 20` | Second color |
+| `20 <= value < 50` | Third color |
+| `50 <= value < 100` | Fourth color |
+| `value >= 100` | Darkest color |
 
-There is no cumulative calculation: `[5, 20, 50]` means color changes at
-5, 20, and 50.
+There is no cumulative calculation: `[5, 20, 50, 100]` means the four
+color changes occur at exactly 5, 20, 50, and 100.
 
 The same option is available from the command line:
 
 ```
-habit-heatmap examples/workouts.csv -o heatmap.svg --value-col minutes --steps 5,20,50
+habit-heatmap examples/workouts.csv -o heatmap.svg --value-col minutes --steps 5,20,50,100
 ```
 
-Pass exactly three comma-separated positive, strictly increasing thresholds.
+Pass exactly four comma-separated positive, finite, strictly increasing thresholds.
 Omit `--steps` to retain automatic scaling.
 
 Pipe data in or out. A `-` means stdin for the CSV argument and stdout for `-o`:
@@ -174,7 +173,7 @@ CLI options use the same names with hyphens, e.g. `--title-color` and
 | `--tz ZONE` | IANA zone (e.g. `America/Chicago`) to rebucket timestamps into |
 | `--start` / `--end` | Clip the rendered window to `YYYY-MM-DD` bounds |
 | `--theme NAME` | One of the five built-in palettes |
-| `--steps A,B,C` | Three positive, strictly increasing color-change thresholds |
+| `--steps A,B,C,D` | Four positive, finite, strictly increasing color-change thresholds |
 | `--label TEXT` | Title rendered above the grid |
 | `--month-label-font-size SIZE` | Month-label font size in SVG units (default: `9`) |
 | `--month-label-color COLOR` | Month-label hex color (default: automatic from theme) |
