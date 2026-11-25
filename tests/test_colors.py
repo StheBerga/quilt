@@ -32,63 +32,49 @@ def test_bucket_color_handles_negative_value():
     assert bucket_color(-5, 10, palette) == palette[0]
 
 
-def test_default_steps_preserve_four_equal_intervals():
-    assert resolve_steps(100) == (25, 50, 75, 100)
+def test_default_steps_preserve_three_automatic_color_boundaries():
+    assert resolve_steps(100) == (25, 50, 75)
 
 
-def test_numeric_steps_are_repeated_four_times():
-    assert resolve_steps(999, 10) == (10, 20, 30, 40)
+def test_custom_thresholds_are_returned_without_modification():
+    assert resolve_steps(999, [5, 20, 50]) == (5, 20, 50)
 
 
-def test_four_custom_step_widths_are_cumulative():
-    assert resolve_steps(999, [5, 15, 30, 60]) == (5, 20, 50, 110)
-
-
-def test_numeric_steps_use_fixed_color_thresholds():
+def test_bucket_color_changes_at_exact_threshold_values():
     palette = THEMES["github"]
-    assert bucket_color(9, 100, palette, steps=10) == palette[1]
-    assert bucket_color(10, 100, palette, steps=10) == palette[2]
-    assert bucket_color(20, 100, palette, steps=10) == palette[3]
-    assert bucket_color(30, 100, palette, steps=10) == palette[4]
+    thresholds = [5, 20, 50]
 
-
-def test_custom_step_widths_use_cumulative_color_thresholds():
-    palette = THEMES["github"]
-    steps = [5, 15, 30, 60]  # cumulative limits: 5, 20, 50, 110
-    assert bucket_color(4, 999, palette, steps=steps) == palette[1]
-    assert bucket_color(5, 999, palette, steps=steps) == palette[2]
-    assert bucket_color(19, 999, palette, steps=steps) == palette[2]
-    assert bucket_color(20, 999, palette, steps=steps) == palette[3]
-    assert bucket_color(50, 999, palette, steps=steps) == palette[4]
-    assert bucket_color(150, 999, palette, steps=steps) == palette[4]
-
-
-@pytest.mark.parametrize("value", [0, -1, math.inf, -math.inf, math.nan])
-def test_resolve_steps_rejects_nonpositive_or_nonfinite_scalar(value):
-    with pytest.raises(ValueError):
-        resolve_steps(100, value)
+    assert bucket_color(0, 999, palette, steps=thresholds) == palette[0]
+    assert bucket_color(4, 999, palette, steps=thresholds) == palette[1]
+    assert bucket_color(5, 999, palette, steps=thresholds) == palette[2]
+    assert bucket_color(19, 999, palette, steps=thresholds) == palette[2]
+    assert bucket_color(20, 999, palette, steps=thresholds) == palette[3]
+    assert bucket_color(49, 999, palette, steps=thresholds) == palette[3]
+    assert bucket_color(50, 999, palette, steps=thresholds) == palette[4]
+    assert bucket_color(150, 999, palette, steps=thresholds) == palette[4]
 
 
 @pytest.mark.parametrize(
-    "values",
+    "steps",
     [
-        [1, 2, 3],
-        [1, 2, 3, 4, 5],
-        [1, 2, 0, 4],
-        [1, 2, -3, 4],
-        [1, 2, math.nan, 4],
-        [1, 2, math.inf, 4],
-        [1, "not-a-number", 3, 4],
+        10,
+        True,
+        "5,20,50",
+        [1, 2],
+        [1, 2, 3, 4],
+        [1, 2, 0],
+        [1, 2, -3],
+        [1, 2, math.nan],
+        [1, 2, math.inf],
+        [1, 3, 2],
+        [1, 1, 2],
+        [True, 2, 3],
+        [1, "not-a-number", 3],
     ],
 )
-def test_resolve_steps_rejects_invalid_sequences(values):
+def test_resolve_steps_rejects_invalid_thresholds(steps):
     with pytest.raises(ValueError):
-        resolve_steps(100, values)
-
-
-def test_resolve_steps_rejects_boolean():
-    with pytest.raises(ValueError):
-        resolve_steps(100, True)
+        resolve_steps(100, steps)
 
 
 def test_all_themes_have_five_colors():
