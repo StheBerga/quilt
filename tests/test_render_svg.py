@@ -167,6 +167,7 @@ def test_render_svg_allows_independent_automatic_and_custom_label_colors():
     assert 'font-size="9" fill="#aabbcc"' in svg
     assert 'font-size="9" fill="#FFFFFF"' in svg
 
+
 def test_render_svg_includes_legend_by_default():
     counts = {date(2024, 1, 1): 1}
     svg = render_svg(counts)
