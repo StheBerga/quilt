@@ -410,11 +410,11 @@ def test_cli_reports_empty_range_without_a_traceback(tmp_path):
 def test_cli_applies_three_exact_color_change_thresholds(tmp_path):
     csv_path = tmp_path / "thresholds.csv"
     csv_path.write_text(
-        "date,value\\n"
-        "2024-01-01,4\\n"
-        "2024-01-02,5\\n"
-        "2024-01-03,20\\n"
-        "2024-01-04,50\\n"
+        "date,value\n"
+        "2024-01-01,4\n"
+        "2024-01-02,5\n"
+        "2024-01-03,20\n"
+        "2024-01-04,50\n"
     )
     output = tmp_path / "heatmap.svg"
     result = subprocess.run(
