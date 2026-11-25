@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import re
 from datetime import date, timedelta
 from math import isfinite
@@ -167,7 +168,7 @@ def render_svg(
     legend: bool = True,
     label: str | None = None,
     week_start: str = "sunday",
-    steps: float | tuple[float, ...] | list[float] | None = None,
+    steps: Sequence[float] | None = None,
     month_label_font_size: int | float = 9,
     month_label_color: str | None = None,
     weekday_label_font_size: int | float = 9,
@@ -196,16 +197,17 @@ def render_svg(
     ``steps`` controls the intensity scale while keeping the five-color
     palette unchanged:
 
-    * ``None`` (default): four equal steps spanning the observed maximum,
-      preserving the original automatic scaling.
-    * A positive number: use that width for each of the four steps.
-    * A sequence of four positive numbers: use those as successive step
-      widths; their cumulative sums define the scale limits.
+    * ``None`` (default): preserve the original automatic scaling, with
+      thresholds at one quarter, one half, and three quarters of the observed
+      maximum.
+    * A sequence of exactly three positive, finite, strictly increasing
+      numbers: use these as the exact values where the color changes.
 
-    Zero/negative values always use the lightest color. The first three
-    cumulative limits separate the four positive-activity colors; values
-    at or above the third limit use the darkest color. Values above the
-    fourth cumulative limit remain darkest.
+    The supplied thresholds are used directly; they are never interpreted
+    as interval widths or added together. Zero and negative values always use
+    the lightest color. Positive values move to the next color when they reach
+    a threshold, and values at or above the third threshold use the darkest
+    color.
     """
     if not counts and (start is None or end is None):
         raise ValueError("counts is empty; pass explicit start and end dates")
@@ -245,7 +247,7 @@ def render_svg(
     palette = THEMES[theme]
     in_range_values = [value for day, value in counts.items() if start <= day <= end]
     max_value = max(in_range_values) if in_range_values else 0.0
-    cumulative_steps = resolve_steps(max_value, steps)
+    thresholds = resolve_steps(max_value, steps)
     empty_automatic_scale = steps is None and max_value <= 0
     start_weekday = WEEK_START_WEEKDAYS[week_start]
 
@@ -271,7 +273,7 @@ def render_svg(
             color = (
                 palette[0]
                 if empty_automatic_scale
-                else color_for_steps(value, cumulative_steps, palette)
+                else color_for_steps(value, thresholds, palette)
             )
             cells.append(
                 f'<rect x="{x}" y="{y}" width="{cell_size}" height="{cell_size}" '
