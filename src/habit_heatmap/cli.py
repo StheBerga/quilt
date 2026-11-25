@@ -23,23 +23,20 @@ def iso_date(raw: str) -> date:
     return datetime.strptime(raw, "%Y-%m-%d").date()
 
 
-def parse_steps(raw: str) -> float | tuple[float, ...]:
-    """Parse one step width or four comma-separated step widths."""
+def parse_steps(raw: str) -> tuple[float, float, float]:
+    """Parse three comma-separated color-change thresholds."""
     try:
-        if "," not in raw:
-            return float(raw)
         values = tuple(float(value.strip()) for value in raw.split(","))
     except ValueError as exc:
         raise argparse.ArgumentTypeError(
-            "steps must be a number or four comma-separated numbers"
+            "steps must be three comma-separated numeric thresholds (e.g. 5,20,50)"
         ) from exc
 
-    if len(values) != 4:
+    if len(values) != 3:
         raise argparse.ArgumentTypeError(
-            "steps must be a number or four comma-separated numbers"
+            "steps must be exactly three comma-separated thresholds (e.g. 5,20,50)"
         )
     return values
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -80,8 +77,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_steps,
         default=None,
         help=(
-            "intensity step widths: one positive number (repeated four times), "
-            "or four comma-separated positive widths"
+            "three comma-separated, positive, strictly increasing intensity "
+            "thresholds (default: automatic scaling)"
         ),
     )
     parser.add_argument("--label", default=None, help="title rendered above the chart")
