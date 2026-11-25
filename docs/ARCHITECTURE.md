@@ -82,17 +82,19 @@ while keeping the standard date/value coercion rules.
   lightest (no activity) to darkest (busiest). Built in: `github`, `blue`,
   `purple`, `mono`, `dark`. Extending is just adding a key — see the
   README's "Themes" section.
-- `resolve_steps(max_value, steps=None)` — returns three color-change
-  thresholds. With `steps=None`, they are one quarter, one half, and three
-  quarters of the in-range maximum. A supplied sequence must contain exactly
-  three positive, finite, strictly increasing absolute threshold values; no
+- `resolve_steps(max_value, steps=None)` — returns four color-change
+  boundaries for the five-color palette. With `steps=None`, they are zero,
+  one quarter, one half, and three quarters of the in-range maximum, preserving
+  the original automatic scale. A supplied sequence must contain exactly four
+  positive, finite, strictly increasing absolute threshold values; no
   interval-width or cumulative interpretation is used.
 - `color_for_steps(value, thresholds, palette)` — maps a value to the five-color
-  palette using those exact thresholds. Zero and negative values use the
-  lightest color; positive values change color at each threshold (inclusive).
+  palette using those four exact boundaries. A value changes to the next
+  palette color when it reaches a threshold (inclusive); values below the
+  first threshold use the lightest color.
 - `bucket_color(value, max_value, palette, steps=None)` — convenience wrapper
   retaining automatic scaling by default and accepting the same optional
-  three-threshold sequence.
+  four-threshold sequence.
 
 ## `render_svg.py`
 
@@ -102,8 +104,9 @@ builders into one `<svg>`. `theme` and `week_start` are validated against
 no silent fallback. The automatic color scale's `max_value` is computed only
 from `counts` entries that fall within `[start, end]`, so data outside an
 explicit render window can't wash out (or exaggerate) the in-range scale.
-Callers can override the automatic boundaries with three exact values via
-`steps=[a, b, c]`. Month labels, weekday labels, the optional title, and
+Callers can override the automatic boundaries with four exact values via
+`steps=[a, b, c, d]`. The four supplied thresholds divide the values into
+five color bands, one per palette color. Month labels, weekday labels, the optional title, and
 legend text each have independent font-size and color arguments; omitted text
 colors are selected from the theme's background luminance.
 
