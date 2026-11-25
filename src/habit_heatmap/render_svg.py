@@ -198,16 +198,16 @@ def render_svg(
     palette unchanged:
 
     * ``None`` (default): preserve the original automatic scaling, with
-      thresholds at one quarter, one half, and three quarters of the observed
-      maximum.
-    * A sequence of exactly three positive, finite, strictly increasing
-      numbers: use these as the exact values where the color changes.
+      four color-change boundaries at zero, one quarter, one half, and three
+      quarters of the observed maximum.
+    * A sequence of exactly four positive, finite, strictly increasing
+      numbers: use these as the exact values where the four color changes occur.
 
     The supplied thresholds are used directly; they are never interpreted
-    as interval widths or added together. Zero and negative values always use
-    the lightest color. Positive values move to the next color when they reach
-    a threshold, and values at or above the third threshold use the darkest
-    color.
+    as interval widths or added together. Together, the four thresholds divide
+    the value range into five color bands. Values below the first threshold use
+    the lightest color; reaching each threshold moves the value to the next
+    palette color.
     """
     if not counts and (start is None or end is None):
         raise ValueError("counts is empty; pass explicit start and end dates")
