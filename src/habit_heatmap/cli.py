@@ -23,6 +23,24 @@ def iso_date(raw: str) -> date:
     return datetime.strptime(raw, "%Y-%m-%d").date()
 
 
+def parse_steps(raw: str) -> float | tuple[float, ...]:
+    """Parse one step width or four comma-separated step widths."""
+    try:
+        if "," not in raw:
+            return float(raw)
+        values = tuple(float(value.strip()) for value in raw.split(","))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "steps must be a number or four comma-separated numbers"
+        ) from exc
+
+    if len(values) != 4:
+        raise argparse.ArgumentTypeError(
+            "steps must be a number or four comma-separated numbers"
+        )
+    return values
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="habit-heatmap",
@@ -57,7 +75,60 @@ def build_parser() -> argparse.ArgumentParser:
         choices=sorted(THEMES),
         help="color theme (default: github)",
     )
+    parser.add_argument(
+        "--steps",
+        type=parse_steps,
+        default=None,
+        help=(
+            "intensity step widths: one positive number (repeated four times), "
+            "or four comma-separated positive widths"
+        ),
+    )
     parser.add_argument("--label", default=None, help="title rendered above the chart")
+    parser.add_argument(
+        "--month-label-font-size",
+        type=float,
+        default=9,
+        help="font size for month labels in SVG units (default: 9)",
+    )
+    parser.add_argument(
+        "--month-label-color",
+        default=None,
+        help="hex color for month labels (default: automatic from theme)",
+    )
+    parser.add_argument(
+        "--weekday-label-font-size",
+        type=float,
+        default=9,
+        help="font size for weekday labels in SVG units (default: 9)",
+    )
+    parser.add_argument(
+        "--weekday-label-color",
+        default=None,
+        help="hex color for weekday labels (default: automatic from theme)",
+    )
+    parser.add_argument(
+        "--title-font-size",
+        type=float,
+        default=14,
+        help="font size for the title in SVG units (default: 14)",
+    )
+    parser.add_argument(
+        "--title-color",
+        default=None,
+        help="hex color for the title (default: automatic from theme)",
+    )
+    parser.add_argument(
+        "--legend-font-size",
+        type=float,
+        default=9,
+        help="font size for legend text in SVG units (default: 9)",
+    )
+    parser.add_argument(
+        "--legend-color",
+        default=None,
+        help="hex color for legend text (default: automatic from theme)",
+    )
     parser.add_argument(
         "--week-start",
         default="sunday",
@@ -92,6 +163,15 @@ def main(argv: list[str] | None = None) -> int:
             theme=args.theme,
             label=args.label,
             week_start=args.week_start,
+            steps=args.steps,
+            month_label_font_size=args.month_label_font_size,
+            month_label_color=args.month_label_color,
+            weekday_label_font_size=args.weekday_label_font_size,
+            weekday_label_color=args.weekday_label_color,
+            title_font_size=args.title_font_size,
+            title_color=args.title_color,
+            legend_font_size=args.legend_font_size,
+            legend_color=args.legend_color,
         )
 
         if args.output == "-":
