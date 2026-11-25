@@ -85,6 +85,7 @@ def _default_label_color(theme: str) -> str:
     luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
     return "#FFFFFF" if luminance < 0.5 else "#767676"
 
+
 def _weekday_labels(
     start_weekday: int,
     grid_y0: int,
