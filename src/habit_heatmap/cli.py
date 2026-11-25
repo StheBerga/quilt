@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from math import isfinite
 from datetime import date, datetime
 from pathlib import Path
 
@@ -24,7 +25,7 @@ def iso_date(raw: str) -> date:
 
 
 def parse_steps(raw: str) -> tuple[float, float, float]:
-    """Parse three comma-separated color-change thresholds."""
+    """Parse three comma-separated absolute color-change thresholds."""
     try:
         values = tuple(float(value.strip()) for value in raw.split(","))
     except ValueError as exc:
@@ -36,6 +37,11 @@ def parse_steps(raw: str) -> tuple[float, float, float]:
         raise argparse.ArgumentTypeError(
             "steps must be exactly three comma-separated thresholds (e.g. 5,20,50)"
         )
+    if not all(isfinite(value) and value > 0 for value in values):
+        raise argparse.ArgumentTypeError("steps thresholds must be positive and finite")
+    if not values[0] < values[1] < values[2]:
+        raise argparse.ArgumentTypeError("steps thresholds must be strictly increasing")
+
     return values
 
 def build_parser() -> argparse.ArgumentParser:
@@ -77,8 +83,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_steps,
         default=None,
         help=(
-            "three comma-separated, positive, strictly increasing intensity "
-            "thresholds (default: automatic scaling)"
+            "three comma-separated, positive, finite, strictly increasing absolute "
+            "intensity thresholds (default: automatic scaling)"
         ),
     )
     parser.add_argument("--label", default=None, help="title rendered above the chart")
