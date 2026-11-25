@@ -407,7 +407,6 @@ def test_cli_reports_empty_range_without_a_traceback(tmp_path):
     assert "habit-heatmap: error:" in result.stderr
 
 
-
 def test_cli_accepts_single_step_width(tmp_path):
     output = tmp_path / "heatmap.svg"
     result = subprocess.run(
