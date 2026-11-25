@@ -242,25 +242,33 @@ def _rect_fill(svg: str, day: str) -> str:
     return match.group(1)
 
 
-def test_render_svg_uses_three_exact_color_change_thresholds():
+def test_render_svg_uses_four_exact_color_change_thresholds():
     counts = {
-        date(2024, 1, 1): 4,
-        date(2024, 1, 2): 5,
-        date(2024, 1, 3): 19,
-        date(2024, 1, 4): 20,
-        date(2024, 1, 5): 49,
-        date(2024, 1, 6): 50,
-        date(2024, 1, 7): 150,
+        date(2024, 1, 1): -1,
+        date(2024, 1, 2): 0,
+        date(2024, 1, 3): 4,
+        date(2024, 1, 4): 5,
+        date(2024, 1, 5): 19,
+        date(2024, 1, 6): 20,
+        date(2024, 1, 7): 49,
+        date(2024, 1, 8): 50,
+        date(2024, 1, 9): 99,
+        date(2024, 1, 10): 100,
+        date(2024, 1, 11): 150,
     }
-    svg = render_svg(counts, steps=[5, 20, 50], legend=False)
+    svg = render_svg(counts, steps=[5, 20, 50, 100], legend=False)
 
-    assert _rect_fill(svg, "2024-01-01") == "#9be9a8"
-    assert _rect_fill(svg, "2024-01-02") == "#40c463"
-    assert _rect_fill(svg, "2024-01-03") == "#40c463"
-    assert _rect_fill(svg, "2024-01-04") == "#30a14e"
-    assert _rect_fill(svg, "2024-01-05") == "#30a14e"
-    assert _rect_fill(svg, "2024-01-06") == "#216e39"
-    assert _rect_fill(svg, "2024-01-07") == "#216e39"
+    assert _rect_fill(svg, "2024-01-01") == "#ebedf0"
+    assert _rect_fill(svg, "2024-01-02") == "#ebedf0"
+    assert _rect_fill(svg, "2024-01-03") == "#ebedf0"
+    assert _rect_fill(svg, "2024-01-04") == "#9be9a8"
+    assert _rect_fill(svg, "2024-01-05") == "#9be9a8"
+    assert _rect_fill(svg, "2024-01-06") == "#40c463"
+    assert _rect_fill(svg, "2024-01-07") == "#40c463"
+    assert _rect_fill(svg, "2024-01-08") == "#30a14e"
+    assert _rect_fill(svg, "2024-01-09") == "#30a14e"
+    assert _rect_fill(svg, "2024-01-10") == "#216e39"
+    assert _rect_fill(svg, "2024-01-11") == "#216e39"
 
 
 def test_render_svg_default_scaling_retains_existing_boundaries():
@@ -283,13 +291,14 @@ def test_render_svg_default_scaling_retains_existing_boundaries():
     "steps",
     [
         10,
-        [1, 2],
-        [1, 2, 3, 4],
-        [0, 2, 3],
-        [1, 2, 2],
-        [1, 3, 2],
-        [1, float("nan"), 3],
-        [1, 2, float("inf")],
+        [1, 2, 3],
+        [1, 2, 3, 4, 5],
+        [0, 2, 3, 4],
+        [-1, 2, 3, 4],
+        [1, 2, 2, 4],
+        [1, 3, 2, 4],
+        [1, 2, 3, float("nan")],
+        [1, 2, 3, float("inf")],
     ],
 )
 def test_render_svg_rejects_invalid_steps(steps):
