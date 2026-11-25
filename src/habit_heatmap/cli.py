@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-from math import isfinite
 from datetime import date, datetime
+from math import isfinite
 from pathlib import Path
 
 from .colors import THEMES
@@ -24,22 +24,22 @@ def iso_date(raw: str) -> date:
     return datetime.strptime(raw, "%Y-%m-%d").date()
 
 
-def parse_steps(raw: str) -> tuple[float, float, float]:
-    """Parse three comma-separated absolute color-change thresholds."""
+def parse_steps(raw: str) -> tuple[float, float, float, float]:
+    """Parse four comma-separated absolute color-change thresholds."""
     try:
         values = tuple(float(value.strip()) for value in raw.split(","))
     except ValueError as exc:
         raise argparse.ArgumentTypeError(
-            "steps must be three comma-separated numeric thresholds (e.g. 5,20,50)"
+            "steps must be four comma-separated numeric thresholds (e.g. 5,20,50,100)"
         ) from exc
 
-    if len(values) != 3:
+    if len(values) != 4:
         raise argparse.ArgumentTypeError(
-            "steps must be exactly three comma-separated thresholds (e.g. 5,20,50)"
+            "steps must be exactly four comma-separated thresholds (e.g. 5,20,50,100)"
         )
     if not all(isfinite(value) and value > 0 for value in values):
         raise argparse.ArgumentTypeError("steps thresholds must be positive and finite")
-    if not values[0] < values[1] < values[2]:
+    if not all(left < right for left, right in zip(values, values[1:])):
         raise argparse.ArgumentTypeError("steps thresholds must be strictly increasing")
 
     return values
@@ -83,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_steps,
         default=None,
         help=(
-            "three comma-separated, positive, finite, strictly increasing absolute "
+            "four comma-separated, positive, finite, strictly increasing absolute "
             "intensity thresholds (default: automatic scaling)"
         ),
     )
