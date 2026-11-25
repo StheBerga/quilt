@@ -489,9 +489,9 @@ def test_cli_rejects_invalid_threshold_values(tmp_path, steps):
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 1
+    assert result.returncode == 2
     assert not output.exists()
-    assert "habit-heatmap: error:" in result.stderr
+    assert "argument --steps" in result.stderr
 
 
 @pytest.mark.parametrize("steps", ["1,2", "1,2,3,4", "invalid"])
