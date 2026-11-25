@@ -22,54 +22,56 @@ THEMES: dict[str, tuple[str, ...]] = {
 def resolve_steps(
     max_value: float,
     steps: Sequence[float] | None = None,
-) -> tuple[float, float, float, float, float]:
-    """Resolve five ordered intensity levels, one for each palette color.
+) -> tuple[float, float, float, float]:
+    """Resolve four color-change thresholds for a five-color palette.
 
-    When omitted, return the five reference levels for the automatic scale.
-    When supplied, ``steps`` must contain exactly five finite, strictly
-    increasing numeric values. Each value is the lower level associated with
-    its corresponding palette color. Values below the first level use the
-    first color; reaching each subsequent level changes to its color.
+    With no custom values, preserve Quilt's original automatic scale:
+    the boundaries are 0, one quarter, one half, and three quarters of
+    the in-range maximum. Zero and negative values remain in the lightest
+    color; positive values move through the palette at the other boundaries.
 
-    The five entries are levels, not interval widths. They are never added
-    together or interpreted cumulatively.
+    A supplied sequence must contain exactly four positive, finite,
+    strictly increasing absolute threshold values. These are the actual
+    values where the color changes, not interval widths or increments.
     """
     if steps is None:
         width = max_value / 4 if max_value > 0 else 0.0
-        return (0.0, width, 2 * width, 3 * width, max_value)
+        return (0.0, width, 2 * width, 3 * width)
 
     if isinstance(steps, (str, bytes)) or not isinstance(steps, Sequence):
         raise ValueError(
-            "steps must be a sequence of exactly five finite, "
-            "strictly increasing numeric levels"
+            "steps must be a sequence of exactly four positive, "
+            "finite, strictly increasing thresholds"
         )
-    if len(steps) != 5:
-        raise ValueError("steps must contain exactly five intensity levels")
+    if len(steps) != 4:
+        raise ValueError("steps must contain exactly four thresholds")
 
     if any(isinstance(value, bool) or not isinstance(value, Real) for value in steps):
-        raise ValueError("all step levels must be numeric")
+        raise ValueError("all step thresholds must be numeric")
 
-    levels = tuple(float(value) for value in steps)
-    if not all(isfinite(value) for value in levels):
-        raise ValueError("all step levels must be finite")
-    if not all(left < right for left, right in zip(levels, levels[1:])):
-        raise ValueError("step levels must be strictly increasing")
+    thresholds = tuple(float(value) for value in steps)
+    if not all(isfinite(value) and value > 0 for value in thresholds):
+        raise ValueError("all step thresholds must be positive and finite")
+    if not all(left < right for left, right in zip(thresholds, thresholds[1:])):
+        raise ValueError("step thresholds must be strictly increasing")
 
-    return levels
+    return thresholds
 
 
 def color_for_steps(
     value: float,
-    levels: Sequence[float],
+    thresholds: Sequence[float],
     palette: tuple[str, ...],
 ) -> str:
-    """Map ``value`` to the color for the greatest configured level it reaches.
+    """Map a value to a palette color using four absolute thresholds.
 
-    Each level corresponds to the palette entry at the same index. Values
-    below the first level are clamped to the first color, and values at or
-    above the last level use the darkest color.
+    Values at or below zero use the lightest color. Otherwise, each threshold
+    moves the value to the next palette color when reached (inclusive).
     """
-    index = max(0, bisect_right(levels, value) - 1)
+    if value <= 0:
+        return palette[0]
+
+    index = bisect_right(thresholds, value)
     return palette[min(index, len(palette) - 1)]
 
 
@@ -81,15 +83,11 @@ def bucket_color(
 ) -> str:
     """Map a value to a palette color.
 
-    Without custom ``steps``, retain Quilt original automatic scale. With
-    ``steps``, require five absolute intensity levels, one per palette color.
+    Without custom steps, use the original automatic scale. With custom
+    steps, use exactly four absolute color-change thresholds.
     """
-    if steps is None:
-        if value <= 0 or max_value <= 0:
-            return palette[0]
-        width = max_value / (len(palette) - 1)
-        index = min(len(palette) - 1, int(value / width) + 1)
-        return palette[index]
+    if steps is None and max_value <= 0:
+        return palette[0]
 
-    levels = resolve_steps(max_value, steps)
-    return color_for_steps(value, levels, palette)
+    thresholds = resolve_steps(max_value, steps)
+    return color_for_steps(value, thresholds, palette)
