@@ -44,6 +44,7 @@ def parse_steps(raw: str) -> tuple[float, float, float, float]:
 
     return values
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="habit-heatmap",
