@@ -407,7 +407,42 @@ def test_cli_reports_empty_range_without_a_traceback(tmp_path):
     assert "habit-heatmap: error:" in result.stderr
 
 
-def test_cli_accepts_single_step_width(tmp_path):
+def test_cli_applies_three_exact_color_change_thresholds(tmp_path):
+    csv_path = tmp_path / "thresholds.csv"
+    csv_path.write_text(
+        "date,value\\n"
+        "2024-01-01,4\\n"
+        "2024-01-02,5\\n"
+        "2024-01-03,20\\n"
+        "2024-01-04,50\\n"
+    )
+    output = tmp_path / "heatmap.svg"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "habit_heatmap",
+            str(csv_path),
+            "-o",
+            str(output),
+            "--value-col",
+            "value",
+            "--steps",
+            "5,20,50",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    svg = output.read_text()
+    assert 'fill="#9be9a8"' in svg
+    assert 'fill="#40c463"' in svg
+    assert 'fill="#30a14e"' in svg
+    assert 'fill="#216e39"' in svg
+
+
+def test_cli_rejects_a_single_step_value(tmp_path):
     output = tmp_path / "heatmap.svg"
     result = subprocess.run(
         [
@@ -423,33 +458,22 @@ def test_cli_accepts_single_step_width(tmp_path):
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, result.stderr
-    assert output.exists()
-    assert output.read_text().startswith("<svg")
+    assert result.returncode == 2
+    assert not output.exists()
 
 
-def test_cli_accepts_four_custom_step_widths(tmp_path):
-    output = tmp_path / "heatmap.svg"
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "habit_heatmap",
-            str(FIXTURE),
-            "-o",
-            str(output),
-            "--steps",
-            "1,2,3,4",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
-    assert output.exists()
-
-
-@pytest.mark.parametrize("steps", ["0", "-5", "nan", "inf"])
-def test_cli_rejects_nonpositive_or_nonfinite_steps(tmp_path, steps):
+@pytest.mark.parametrize(
+    "steps",
+    [
+        "0,2,3",
+        "-1,2,3",
+        "1,1,3",
+        "1,3,2",
+        "1,nan,3",
+        "1,2,inf",
+    ],
+)
+def test_cli_rejects_invalid_threshold_values(tmp_path, steps):
     output = tmp_path / "heatmap.svg"
     result = subprocess.run(
         [
@@ -467,10 +491,11 @@ def test_cli_rejects_nonpositive_or_nonfinite_steps(tmp_path, steps):
     )
     assert result.returncode == 1
     assert not output.exists()
+    assert "habit-heatmap: error:" in result.stderr
 
 
-@pytest.mark.parametrize("steps", ["1,2", "1,2,3", "1,2,3,4,5", "invalid"])
-def test_cli_rejects_malformed_step_widths(tmp_path, steps):
+@pytest.mark.parametrize("steps", ["1,2", "1,2,3,4", "invalid"])
+def test_cli_rejects_malformed_threshold_arguments(tmp_path, steps):
     output = tmp_path / "heatmap.svg"
     result = subprocess.run(
         [
