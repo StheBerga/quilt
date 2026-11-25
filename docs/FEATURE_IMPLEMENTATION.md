@@ -7,85 +7,96 @@ branch and how each is implemented across the Python API, SVG renderer, CLI, and
 
 ### Intended behavior
 
-Quilt uses a five-color palette. The lightest color is reserved for zero and
-negative values, leaving four colors for positive values. Therefore, three
-thresholds are needed to define the three transitions between those four
-positive-intensity colors.
+Quilt uses a five-color palette. There are **four color-change boundaries**
+between those five colors, so `steps` must contain exactly four values.
 
-The `steps` argument contains the **absolute values at which the color changes**.
-They are not interval widths, increments, or values to be accumulated.
+The supplied values are **absolute intensity thresholds**. They identify the
+exact values at which the cell moves to the next palette color. They are not
+interval widths, increments, or values to be accumulated.
 
-For example, `steps=[5, 20, 50]` means:
+For example, `steps=[5, 20, 50, 100]` defines these five bands:
 
 | Input value | Palette color |
 | --- | --- |
-| `value <= 0` | Lightest / no-activity color |
-| `0 < value < 5` | First positive-intensity color |
-| `5 <= value < 20` | Second positive-intensity color |
-| `20 <= value < 50` | Third positive-intensity color |
-| `value >= 50` | Darkest color |
+| `value < 5` | First / lightest color |
+| `5 <= value < 20` | Second color |
+| `20 <= value < 50` | Third color |
+| `50 <= value < 100` | Fourth color |
+| `value >= 100` | Fifth / darkest color |
 
-A value exactly equal to a threshold uses the color beginning at that threshold.
-The values are used unchanged: no cumulative sum is calculated.
+A value exactly equal to a threshold uses the color beginning at that
+threshold. Zero and negative values fall into the first band when thresholds
+are positive.
 
 ### Automatic scaling
 
-When `steps=None` (the default), Quilt preserves its original range-relative
-behavior. If the maximum value in the rendered date range is `M > 0`, the
-three boundaries are `M/4`, `M/2`, and `3M/4`. Values outside an explicit
-`start` / `end` rendering window do not affect this maximum.
+When `steps=None` (the default), Quilt preserves its original automatic
+scaling. If the maximum value in the rendered date range is `M > 0`, the
+four boundaries are:
 
-If the in-range maximum is not positive, the automatic scale renders cells with
-the lightest color.
+```python
+[0, M / 4, M / 2, 3 * M / 4]
+```
+
+This is equivalent to the original automatic mapping: zero and negative values
+use the lightest color; positive values move through the four remaining
+boundaries as they cross the quartile cutoffs. Values outside an explicit
+`start` / `end` rendering window do not affect `M`.
+
+If the in-range maximum is not positive, the automatic scale renders every
+cell with the lightest color.
 
 ### Python API
 
 ```python
-svg = render_svg(counts, steps=[5, 20, 50])
+svg = render_svg(counts, steps=[5, 20, 50, 100])
 ```
 
-The argument must be a sequence containing exactly three numeric thresholds.
+The argument must be a sequence containing exactly four numeric thresholds.
 Each threshold must be positive and finite, and the sequence must be strictly
 increasing. Invalid values raise `ValueError`.
 
 ### CLI
 
 ```bash
-habit-heatmap input.csv -o heatmap.svg --value-col minutes --steps 5,20,50
+habit-heatmap input.csv -o heatmap.svg --value-col minutes --steps 5,20,50,100
 ```
 
-The CLI accepts exactly three comma-separated thresholds. Malformed input and
+The CLI accepts exactly four comma-separated thresholds. Malformed input and
 non-positive, non-finite, or non-increasing values are rejected by argument
 parsing, before the input CSV is processed.
 
 ### Implementation by file
 
 - **`src/habit_heatmap/colors.py`**
-  - `resolve_steps(max_value, steps=None)` returns the three boundaries.
-    With no custom sequence it calculates the original automatic boundaries;
-    with a custom sequence it validates and returns the supplied values as-is.
-  - `color_for_steps(value, thresholds, palette)` maps a value to a palette
-    color. Zero and negative values use palette index 0; positive values move
-    to the next color when `value >= threshold`.
+  - `resolve_steps(max_value, steps=None)` returns four boundaries. With no
+    custom sequence it calculates the original automatic boundaries
+    `0, M/4, M/2, 3M/4`; with a custom sequence it validates and returns the
+    supplied absolute thresholds unchanged.
+  - `color_for_steps(value, thresholds, palette)` maps a value to the
+    five-color palette using the four boundaries. It uses right-inclusive
+    threshold transitions: a value equal to a threshold moves to the next
+    palette color.
   - `bucket_color(..., steps=None)` preserves the existing convenience API
-    and adds optional absolute thresholds.
+    and adds optional four-value absolute thresholds.
 - **`src/habit_heatmap/render_svg.py`**
-  - `render_svg(..., steps=None)` exposes the thresholds in the public renderer.
+  - `render_svg(..., steps=None)` exposes the four thresholds in the public
+    renderer.
   - The renderer calculates the maximum from values inside the rendered date
-    range, resolves the boundaries once, and uses `color_for_steps` for each
-    day cell.
+    range, resolves the four boundaries once, and uses `color_for_steps`
+    for each day cell.
   - The automatic all-non-positive case remains lightest when `steps` is
-    omitted. Explicit thresholds can still color positive values independently
-    of the observed maximum.
+    omitted.
 - **`src/habit_heatmap/cli.py`**
-  - `parse_steps` parses the three comma-separated values and validates their
+  - `parse_steps` parses four comma-separated values and validates their
     count, finiteness, positivity, and strict ordering.
-  - `--steps` passes the resulting tuple to `render_svg`.
+  - `--steps` passes the resulting four-value tuple to `render_svg`.
 - **Tests**
-  - `tests/test_colors.py` checks automatic boundaries, exact threshold
-    boundaries, values between and above thresholds, and invalid sequences.
-  - `tests/test_render_svg.py` checks the actual SVG cell fill at and around
-    each supplied threshold, plus unchanged automatic scaling.
+  - `tests/test_colors.py` checks automatic boundaries, all four exact
+    threshold transitions, values between and above thresholds, and invalid
+    sequences.
+  - `tests/test_render_svg.py` checks the actual SVG cell fill below, at, and
+    above each supplied threshold, plus unchanged automatic scaling.
   - `tests/test_cli.py` checks CLI threshold application and rejects malformed
     or invalid threshold arguments.
 
