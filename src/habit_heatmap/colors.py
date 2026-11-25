@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from itertools import accumulate
 from math import isfinite
 from numbers import Real
 
@@ -21,62 +20,58 @@ THEMES: dict[str, tuple[str, ...]] = {
 
 def resolve_steps(
     max_value: float,
-    steps: float | Sequence[float] | None = None,
-) -> tuple[float, float, float, float]:
-    """Return the cumulative limits for a five-color intensity scale.
+    steps: Sequence[float] | None = None,
+) -> tuple[float, float, float]:
+    """Return the three color-change thresholds for a five-color scale.
 
-    ``steps=None`` preserves Quilt's original behaviour by dividing the
-    observed maximum into four equal-width steps. A positive scalar is
-    repeated four times. A sequence must contain exactly four positive
-    step widths; its cumulative sums define the scale limits.
+    If steps is None, preserve Quilt's original behavior by placing the
+    thresholds at one quarter, one half, and three quarters of the observed
+    maximum. Otherwise, steps must contain exactly three positive, finite,
+    strictly increasing threshold values. The supplied values are used
+    directly; they are never treated as interval widths or accumulated.
 
-    The first three cumulative limits separate the four non-zero colors.
-    The fourth is the nominal upper end of the darkest color's interval;
-    values above it remain in the darkest color.
+    The lightest palette color is reserved for zero and negative values.
+    The three thresholds separate the four colors used for positive values.
+    Values at or above the third threshold use the darkest color.
     """
     if steps is None:
         width = max_value / 4 if max_value > 0 else 0.0
-        widths = (width, width, width, width)
-    elif isinstance(steps, bool):
-        raise ValueError("steps must be a positive number or a sequence of four positive numbers")
-    elif isinstance(steps, Real):
-        width = float(steps)
-        if not isfinite(width) or width <= 0:
-            raise ValueError("steps must be a positive finite number")
-        widths = (width, width, width, width)
-    else:
-        if isinstance(steps, (str, bytes)) or not isinstance(steps, Sequence):
-            raise ValueError(
-                "steps must be None, a positive number, or a sequence of four positive numbers"
-            )
-        if len(steps) != 4:
-            raise ValueError("steps sequence must contain exactly four values")
-        try:
-            widths = tuple(float(value) for value in steps)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("all step widths must be numeric") from exc
-        if not all(isfinite(width) and width > 0 for width in widths):
-            raise ValueError("all step widths must be positive and finite")
+        return (width, 2 * width, 3 * width)
 
-    return tuple(accumulate(widths))
+    if isinstance(steps, (str, bytes)) or not isinstance(steps, Sequence):
+        raise ValueError(
+            "steps must be a sequence of exactly three positive, "
+            "strictly increasing numeric thresholds"
+        )
+    if len(steps) != 3:
+        raise ValueError("steps must contain exactly three thresholds")
+
+    if any(isinstance(value, bool) or not isinstance(value, Real) for value in steps):
+        raise ValueError("all step thresholds must be numeric")
+
+    thresholds = tuple(float(value) for value in steps)
+    if not all(isfinite(value) and value > 0 for value in thresholds):
+        raise ValueError("all step thresholds must be positive and finite")
+    if not (thresholds[0] < thresholds[1] < thresholds[2]):
+        raise ValueError("step thresholds must be strictly increasing")
+
+    return thresholds
 
 
 def color_for_steps(
     value: float,
-    cumulative_steps: Sequence[float],
+    thresholds: Sequence[float],
     palette: tuple[str, ...],
 ) -> str:
-    """Map ``value`` to a palette color using resolved cumulative limits.
+    """Map value to a palette color using exact threshold values.
 
-    Zero and negative values use the no-activity color. Positive values
-    move to the next color when they reach one of the first three limits.
+    Zero and negative values use the no-activity color. A positive value
+    moves to the next color when it is greater than or equal to a threshold.
     """
     if value <= 0:
         return palette[0]
 
-    # Five colors include a dedicated zero-activity color, leaving four
-    # colors for positive activity and therefore three color transitions.
-    index = 1 + sum(value >= threshold for threshold in cumulative_steps[:3])
+    index = 1 + sum(value >= threshold for threshold in thresholds)
     return palette[min(index, len(palette) - 1)]
 
 
@@ -84,12 +79,12 @@ def bucket_color(
     value: float,
     max_value: float,
     palette: tuple[str, ...],
-    steps: float | Sequence[float] | None = None,
+    steps: Sequence[float] | None = None,
 ) -> str:
-    """Map ``value`` to a palette color.
+    """Map value to a palette color.
 
-    The three-argument call retains the original automatic scaling. The
-    optional ``steps`` argument accepts the same values as ``resolve_steps``.
+    The three-argument call retains the original automatic scaling.
+    The optional steps argument supplies the three exact color-change thresholds.
     """
     if value <= 0 or (steps is None and max_value <= 0):
         return palette[0]
